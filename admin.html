@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REGICAP — Administrador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><b>REGICAP</b><span>v1.0</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar"></div>
+      <div>
+        <div class="u-name" id="userName"></div>
+        <div class="u-role" id="userRole"></div>
+      </div>
+      <button class="logout" title="Cerrar sesión" onclick="logout()">⏻</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="screen-title" id="topTitle"></div>
+      <div class="topbar-right" id="topRight"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admin.screens.js"></script>
+<script>
+  const session = requireSession('administrador');
+  if(session) bootApp('administrador', getAdministradorActual(), 'resultados');
+</script>
+</body>
+</html>

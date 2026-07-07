@@ -1,0 +1,15 @@
+# macOS / editores
+.DS_Store
+*.swp
+*~
+
+# Vercel
+.vercel
+
+# Variables de entorno / secretos
+.env
+.env.*
+
+# Node (por si se agregan herramientas)
+node_modules/
+npm-debug.log*
