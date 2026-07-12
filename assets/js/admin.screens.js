@@ -16,6 +16,7 @@ TITLES = { resultados: 'Consultar resultados', feedback: 'Entregar feedback' };
 
 let capDrill = null;
 let analisisParticipanteId = null;
+let filtroConsultarCap = '';
 let fbQuery = '';
 let fbParticipanteId = null;
 let fbCapacitacionId = null;
@@ -25,6 +26,7 @@ function seleccionarAnalisis(id){ analisisParticipanteId = id; navigate('resulta
 function cerrarAnalisis(){ analisisParticipanteId = null; capDrill = null; navigate('resultados'); }
 function abrirDrill(capId){ capDrill = capId; navigate('resultados'); }
 function cerrarDrill(){ capDrill = null; navigate('resultados'); }
+function setFiltroConsultarCap(capId){ filtroConsultarCap = capId; navigate('resultados'); }
 function irAFeedback(participanteId, capacitacionId){
   fbParticipanteId = participanteId; fbCapacitacionId = capacitacionId; fbQuery = '';
   navigate('feedback');
@@ -54,7 +56,6 @@ function renderConsultar(){
     <span class="txt-2" style="font-weight:600">Filtros:</span>
     <span class="filter-chip active">Capacitación ▾</span>
     <span class="filter-chip">Cohorte ▾</span>
-    <span class="filter-chip">Participante ▾</span>
     <span class="filter-chip">Período ▾</span>
     <span class="filter-chip">Estado ▾</span>
   </div>
@@ -80,19 +81,25 @@ function renderConsultar(){
       ${donut(dist.alto, dist.medio, dist.bajo, dist.total, 'total')}
     </div>
     <div class="card">
-      <div class="label-upper" style="margin-bottom:2px">Participantes</div>
-      <div class="txt-3" style="font-size:10px; margin-bottom:8px">Haz clic en un participante para ver su análisis individual →</div>
-      <table><thead><tr><th>Nombre</th><th>Capacitación</th><th>Pts</th><th>Estado</th></tr></thead>
-      <tbody>${filas.map(f => `<tr class="clickable" onclick="seleccionarAnalisis('${f.participante.id}')">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px">
+        <div class="label-upper">Participantes</div>
+        <select class="input" style="width:auto; padding:5px 8px; font-size:10px" onchange="setFiltroConsultarCap(this.value)">
+          <option value="">Todos los cursos</option>
+          ${[...new Map(filas.map(f => [f.capacitacion.id, f.capacitacion])).values()].sort((a, b) => a.nombre.localeCompare(b.nombre)).map(c => `<option value="${c.id}" ${filtroConsultarCap === c.id ? 'selected' : ''}>${c.nombre}</option>`).join('')}
+        </select>
+      </div>
+      <div class="txt-3" style="font-size:10px; margin-bottom:8px">Haz clic en un participante para ver su análisis individual</div>
+      <table><thead><tr><th>Nombre</th><th>Capacitación</th><th>Pts</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${(filtroConsultarCap ? filas.filter(f => f.capacitacion.id === filtroConsultarCap) : filas).map(f => `<tr class="clickable" onclick="seleccionarAnalisis('${f.participante.id}')">
         <td>${f.participante.nombre}</td><td>${f.capacitacion.nombre}</td>
         <td class="${scoreClass(f.nivel)}">${f.score ?? '—'}</td>
-        <td>${pillFor(f.nivel)}</td></tr>`).join('')}</tbody></table>
+        <td>${pillFor(f.nivel)}</td>
+        <td class="row-select">Analizar ${ICON.chevronRight}</td></tr>`).join('') || '<tr><td colspan="5" class="txt-3">Sin participantes para este curso.</td></tr>'}</tbody></table>
     </div>
   </div>
   <div class="bottombar" style="margin:16px -20px -20px; border-radius:0">
     <span class="pre">Precondición: sesión iniciada · respuestas procesadas · datos disponibles</span>
     <div class="actions">
-      <button class="btn">Ver histórico</button>
       <button class="btn">Exportar reporte</button>
     </div>
   </div>`;
@@ -121,12 +128,13 @@ function renderDrillCapacitacion(capId){
     </div>
     <div class="card">
       <div class="label-upper" style="margin-bottom:2px">Participantes de esta capacitación</div>
-      <div class="txt-3" style="font-size:10px; margin-bottom:8px">Haz clic en un participante para ver su análisis →</div>
-      <table><thead><tr><th>Nombre</th><th>Pts</th><th>Estado</th></tr></thead>
+      <div class="txt-3" style="font-size:10px; margin-bottom:8px">Haz clic en un participante para ver su análisis</div>
+      <table><thead><tr><th>Nombre</th><th>Pts</th><th>Estado</th><th></th></tr></thead>
       <tbody>${participantes.map(p => `<tr class="clickable" onclick="seleccionarAnalisis('${p.participante.id}')">
         <td>${p.participante.nombre}</td>
         <td class="${scoreClass(p.nivel)}">${p.score ?? '—'}</td>
-        <td>${estadoInscripcionPill(p.inscripcion.estado)}</td></tr>`).join('')}</tbody></table>
+        <td>${estadoInscripcionPill(p.inscripcion.estado)}</td>
+        <td class="row-select">Analizar ${ICON.chevronRight}</td></tr>`).join('')}</tbody></table>
     </div>
   </div>`;
 }

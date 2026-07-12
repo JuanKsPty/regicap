@@ -159,6 +159,9 @@ td{font-size:11px; padding:9px 8px; border-bottom:1px solid var(--border-subtle)
 tr.selected td{background:var(--accent-light)}
 tr.clickable{cursor:pointer}
 tr.clickable:hover td{background:var(--bg-secondary)}
+.row-select{color:var(--accent); font-weight:700; text-align:right; white-space:nowrap; width:1%}
+.row-select svg{width:11px; height:11px; vertical-align:-1px; margin-left:2px}
+tr.clickable:hover .row-select{text-decoration:underline}
 .score-alto{color:var(--success-text); font-weight:700}
 .score-medio{color:var(--warning-text); font-weight:700}
 .score-bajo{color:var(--danger-text); font-weight:700}
