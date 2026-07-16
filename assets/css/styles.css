@@ -139,11 +139,18 @@ textarea.input{resize:vertical; min-height:56px}
 .trend-up{color:var(--success-text)} .trend-down{color:var(--danger-text)} .trend-flat{color:var(--text-2)}
 
 /* barras horizontales */
-.bar-row{display:flex; align-items:center; gap:10px; margin-bottom:12px}
+.bar-row{display:flex; align-items:center; gap:10px; margin-bottom:4px; padding:6px 8px; margin:0 -8px 8px; border-radius:8px; transition:.12s}
 .bar-row .b-label{width:150px; font-size:11px; color:var(--text-2); flex:none}
+.bar-row.clickable .b-label{text-decoration:underline dotted var(--text-3) 1px; text-underline-offset:2px}
 .bar-track{flex:1; height:8px; background:var(--bg-secondary); border-radius:20px; overflow:hidden}
-.bar-track > span{display:block; height:100%; border-radius:20px}
+.bar-track > span{display:block; height:100%; border-radius:20px; transition:width .2s}
 .bar-row .b-val{width:36px; text-align:right; font-size:11px; font-weight:700; flex:none}
+.bar-row.clickable{cursor:pointer}
+.bar-row.clickable .b-hint{width:14px; flex:none; color:var(--text-3); opacity:1; transition:.12s; display:flex; align-items:center}
+.bar-row.clickable .b-hint svg{width:11px; height:11px}
+.bar-row.clickable:hover{background:var(--accent-light)}
+.bar-row.clickable:hover .b-label{color:var(--accent); text-decoration:underline}
+.bar-row.clickable:hover .b-hint{color:var(--accent); transform:translateX(2px)}
 
 /* donut */
 .donut-wrap{display:flex; align-items:center; gap:16px}

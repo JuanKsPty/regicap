@@ -67,12 +67,14 @@ function renderConsultar(){
   </div>
   <div class="grid-3 section-gap">
     <div class="card" style="display:flex; flex-direction:column">
-      <div class="label-upper" style="margin-bottom:14px">Puntaje por capacitación</div>
+      <div class="label-upper" style="margin-bottom:2px">Puntaje por capacitación</div>
+      <div class="txt-3" style="font-size:10px; margin-bottom:10px">Haz clic en una capacitación para ver el detalle por módulo</div>
       <div style="flex:1">${scored.map(s => `
-        <div class="bar-row clickable" onclick="abrirDrill('${s.cap.id}')">
+        <div class="bar-row clickable" title="Ver detalle de ${s.cap.nombre}" onclick="abrirDrill('${s.cap.id}')">
           <div class="b-label">${s.cap.nombre}</div>
           <div class="bar-track"><span style="width:${s.score || 0}%; background:${s.score ? barColor(s.score) : 'var(--border)'}"></span></div>
           <div class="b-val" style="color:${s.score ? barColor(s.score) : 'var(--text-3)'}">${s.score ?? '—'}</div>
+          <div class="b-hint">${ICON.chevronRight}</div>
         </div>`).join('')}</div>
       ${extremos.debil ? `<div class="alert alert-warning" style="margin-top:8px">⚠ ${extremos.debil.cap.nombre} presenta el puntaje más bajo. Se recomienda revisión del contenido.</div>` : ''}
     </div>
