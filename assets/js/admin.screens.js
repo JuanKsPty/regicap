@@ -131,12 +131,11 @@ function renderDrillCapacitacion(capId){
     <div class="card">
       <div class="label-upper" style="margin-bottom:2px">Participantes de esta capacitación</div>
       <div class="txt-3" style="font-size:10px; margin-bottom:8px">Haz clic en un participante para ver su análisis</div>
-      <table><thead><tr><th>Nombre</th><th>Pts</th><th>Estado</th><th></th></tr></thead>
+      <table><thead><tr><th>Nombre</th><th>Pts</th><th>Estado</th></tr></thead>
       <tbody>${participantes.map(p => `<tr class="clickable" onclick="seleccionarAnalisis('${p.participante.id}')">
         <td>${p.participante.nombre}</td>
         <td class="${scoreClass(p.nivel)}">${p.score ?? '—'}</td>
-        <td>${estadoInscripcionPill(p.inscripcion.estado)}</td>
-        <td class="row-select">Analizar ${ICON.chevronRight}</td></tr>`).join('')}</tbody></table>
+        <td>${estadoInscripcionPill(p.inscripcion.estado)}</td></tr>`).join('')}</tbody></table>
     </div>
   </div>`;
 }
