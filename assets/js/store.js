@@ -32,6 +32,9 @@ function byId(list, id){ return list.find(x => x.id === id); }
 function login(role){
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role, entityId: SESSION_IDENTITIES[role].id }));
 }
+function loginAs(role, entityId){
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ role, entityId }));
+}
 function logout(){
   sessionStorage.removeItem(SESSION_KEY);
   location.href = 'index.html';
@@ -48,6 +51,31 @@ function requireSession(expectedRole){
 function getEmpresaActual(){ const s = getSession(); return s ? byId(loadDB().empresas, s.entityId) : null; }
 function getParticipanteActual(){ const s = getSession(); return s ? byId(loadDB().participantes, s.entityId) : null; }
 function getAdministradorActual(){ const s = getSession(); return s ? byId(loadDB().administradores, s.entityId) : null; }
+
+/* ============ REGISTRO DE CUENTAS ============ */
+function listaPorRol(role){
+  const db = loadDB();
+  return role === 'empresa' ? db.empresas : role === 'participante' ? db.participantes : db.administradores;
+}
+function existeEmail(role, email){
+  return listaPorRol(role).some(u => u.email.toLowerCase() === email.toLowerCase());
+}
+function registrarUsuario(role, { nombre, email, tipo }){
+  const db = loadDB();
+  let nuevo;
+  if(role === 'empresa'){
+    nuevo = { id: uid('e'), nombre, tipo: tipo || 'otro', email };
+    db.empresas.push(nuevo);
+  } else if(role === 'participante'){
+    nuevo = { id: uid('p'), nombre, email };
+    db.participantes.push(nuevo);
+  } else {
+    nuevo = { id: uid('a'), nombre, email };
+    db.administradores.push(nuevo);
+  }
+  saveDB(db);
+  return nuevo;
+}
 
 /* ============ QUERIES: catálogo / jerarquía de contenido ============ */
 function getCapacitacion(id){ return byId(loadDB().capacitaciones, id); }

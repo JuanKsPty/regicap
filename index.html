@@ -24,7 +24,7 @@
     </ul>
   </div>
   <div class="login-right">
-    <div class="login-card">
+    <div class="login-card" id="loginCard">
       <h2>Iniciar sesión</h2>
       <p class="sub">Accede con tu cuenta institucional</p>
       <div class="role-chips" id="roleChips">
@@ -41,7 +41,47 @@
         <input class="input" type="password" value="********" />
       </div>
       <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar al sistema</button>
+      <button class="btn btn-full" style="margin-top:8px" type="button" onclick="mostrarRegistro()">Crear una cuenta nueva</button>
       <button class="login-link" onclick="return false" type="button">¿Olvidaste tu contraseña? Recuperar acceso</button>
+    </div>
+
+    <div class="login-card hidden" id="registerCard">
+      <h2>Crear cuenta</h2>
+      <p class="sub">Regístrate según tu rol en la plataforma</p>
+      <div class="role-chips" id="regRoleChips">
+        <div class="role-chip" data-role="participante">Participante</div>
+        <div class="role-chip" data-role="empresa">Empresa</div>
+      </div>
+      <div class="field">
+        <label>Nombre completo</label>
+        <input class="input" id="regNombre" type="text" placeholder="Ej. Ana Torres" />
+      </div>
+      <div class="field hidden" id="regTipoField">
+        <label>Tipo de organización</label>
+        <select class="input" id="regTipo">
+          <option value="cámara">Cámara de comercio</option>
+          <option value="banco">Banco</option>
+          <option value="plataforma">Plataforma</option>
+          <option value="universidad">Universidad</option>
+          <option value="gobierno">Gobierno</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input class="input" id="regEmail" type="email" placeholder="correo@ejemplo.com" />
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input class="input" id="regPass" type="password" />
+      </div>
+      <div class="field">
+        <label>Confirmar contraseña</label>
+        <input class="input" id="regPass2" type="password" />
+      </div>
+      <div class="alert alert-error hidden" id="regError" style="margin-bottom:12px"></div>
+      <button class="btn btn-primary btn-full" onclick="doRegister()">Crear cuenta</button>
+      <button class="login-link" type="button" onclick="mostrarLogin()">¿Ya tienes cuenta? Inicia sesión</button>
     </div>
   </div>
 </div>
@@ -66,6 +106,47 @@ function doLogin(){
   const sel = document.querySelector('#roleChips .role-chip.active');
   const role = sel ? sel.dataset.role : 'administrador';
   login(role);
+  location.href = PAGE_BY_ROLE[role];
+}
+
+function mostrarRegistro(){
+  document.getElementById('loginCard').classList.add('hidden');
+  document.getElementById('registerCard').classList.remove('hidden');
+}
+function mostrarLogin(){
+  document.getElementById('registerCard').classList.add('hidden');
+  document.getElementById('loginCard').classList.remove('hidden');
+}
+document.querySelectorAll('#regRoleChips .role-chip').forEach(chip => {
+  chip.onclick = () => {
+    document.querySelectorAll('#regRoleChips .role-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    document.getElementById('regTipoField').classList.toggle('hidden', chip.dataset.role !== 'empresa');
+  };
+});
+document.querySelector('#regRoleChips .role-chip[data-role="participante"]').classList.add('active');
+
+function mostrarErrorRegistro(msg){
+  const err = document.getElementById('regError');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+}
+function doRegister(){
+  const sel = document.querySelector('#regRoleChips .role-chip.active');
+  const role = sel ? sel.dataset.role : 'participante';
+  const nombre = document.getElementById('regNombre').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  const tipo = document.getElementById('regTipo').value;
+
+  document.getElementById('regError').classList.add('hidden');
+  if(!nombre || !email || !pass) return mostrarErrorRegistro('Completa todos los campos obligatorios.');
+  if(pass !== pass2) return mostrarErrorRegistro('Las contraseñas no coinciden.');
+  if(existeEmail(role, email)) return mostrarErrorRegistro('Ya existe una cuenta con ese correo.');
+
+  const nuevo = registrarUsuario(role, { nombre, email, tipo });
+  loginAs(role, nuevo.id);
   location.href = PAGE_BY_ROLE[role];
 }
 </script>
