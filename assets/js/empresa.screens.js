@@ -14,12 +14,13 @@ TITLES = { registrar: 'Gestionar capacitaciones' };
 
 let empresaEditCapId = null;
 let capEnEdicion = null;   // id del capítulo (actividad) que se está editando inline
+let moduloExpandido = null; // id del único módulo abierto en el acordeón de "Gestionar módulos"
 
 SCREENS.registrar = () => (empresaEditCapId ? renderGestionModulos(empresaEditCapId) : renderListaCapacitaciones());
 
 /* ---- CU-8: listado + CRUD + publicar/despublicar ---- */
-function abrirGestionModulos(capId){ empresaEditCapId = capId; navigate('registrar'); }
-function volverAListaCapacitaciones(){ empresaEditCapId = null; navigate('registrar'); }
+function abrirGestionModulos(capId){ empresaEditCapId = capId; moduloExpandido = null; navigate('registrar'); }
+function volverAListaCapacitaciones(){ empresaEditCapId = null; moduloExpandido = null; navigate('registrar'); }
 function registrarCapacitacionYRefrescar(){
   const nombre = document.getElementById('reg-nombre').value.trim();
   const duracion = document.getElementById('reg-duracion').value.trim();
@@ -69,19 +70,26 @@ function renderListaCapacitaciones(){
 function moverModuloYRefrescar(moduloId, dir){ moverModulo(moduloId, dir); navigate('registrar'); }
 function eliminarModuloYRefrescar(moduloId){
   if(!confirm('¿Eliminar este módulo y todo su contenido?')) return;
+  if(moduloExpandido === moduloId) moduloExpandido = null;
   eliminarModulo(moduloId);
+  navigate('registrar');
+}
+function toggleModuloYRefrescar(moduloId){
+  moduloExpandido = moduloExpandido === moduloId ? null : moduloId;
   navigate('registrar');
 }
 function agregarModuloYRefrescar(capId){
   const input = document.getElementById(`mod-input-${capId}`);
   const val = input.value.trim();
   if(!val){ alert('Ingresa un nombre para el módulo.'); return; }
-  crearModulo(capId, val);
+  const nuevo = crearModulo(capId, val);
+  moduloExpandido = nuevo.id;
   navigate('registrar');
 }
 function agregarModuloTestYRefrescar(capId){
   if(tieneModuloTest(capId)){ alert('Este curso ya tiene un módulo de evaluación final.'); return; }
-  crearModulo(capId, 'Evaluación final', 'test');
+  const nuevo = crearModulo(capId, 'Evaluación final', 'test');
+  moduloExpandido = nuevo.id;
   navigate('registrar');
 }
 
@@ -246,7 +254,7 @@ function renderGestionModulos(capId){
     ${tieneModuloTest(cap.id) ? '' : `<button class="btn" onclick="agregarModuloTestYRefrescar('${cap.id}')">🎯 + Evaluación final</button>`}
   </div>
   <div class="txt-3" style="font-size:10px; margin-bottom:16px">Cada módulo puede tener actividades (PDF, lectura o video) y un test. La <b>evaluación final</b> es un módulo de tipo test opcional que reúne todos los cuestionarios en un solo formulario.</div>
-  ${modulos.length ? modulos.map((m, i) => renderModuloCard(m, i === 0, i === modulos.length - 1)).join('')
+  ${modulos.length ? modulos.map((m, i) => renderModuloCard(m, i === 0, i === modulos.length - 1, m.id === moduloExpandido)).join('')
     : '<div class="card txt-3" style="text-align:center; padding:20px">Esta capacitación aún no tiene módulos.</div>'}`;
 }
 
@@ -261,17 +269,20 @@ const PREG_HINT = {
   cualitativa: 'Respuesta argumentativa; la IA evalúa coherencia y profundidad según la rúbrica.',
 };
 
-function moduloHeader(m, esPrimero, esUltimo, esTest){
-  return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-    <div style="display:flex; align-items:center; gap:8px">
-      <div class="order-ctrl">
+function moduloHeader(m, esPrimero, esUltimo, esTest, expandido){
+  return `<div class="modulo-header" onclick="toggleModuloYRefrescar('${m.id}')">
+    <div style="display:flex; align-items:center; gap:8px; min-width:0">
+      <div class="order-ctrl" onclick="event.stopPropagation()">
         <button ${esPrimero ? 'disabled' : ''} onclick="moverModuloYRefrescar('${m.id}',-1)">▲</button>
         <button ${esUltimo ? 'disabled' : ''} onclick="moverModuloYRefrescar('${m.id}',1)">▼</button>
       </div>
-      <span style="font-weight:600; font-size:12px">${esTest ? '🎯 ' : `Módulo ${m.orden} · `}${m.nombre}</span>
-      <span class="chip">${esTest ? 'Evaluación final' : 'Contenido'}</span>
+      <span class="m-title">${esTest ? '🎯 ' : `Módulo ${m.orden} · `}${m.nombre}</span>
+      <span class="chip" style="flex:none">${esTest ? 'Evaluación final' : 'Contenido'}</span>
     </div>
-    <button class="btn btn-danger" style="padding:4px 9px; font-size:10px" onclick="eliminarModuloYRefrescar('${m.id}')">Eliminar módulo</button>
+    <div style="display:flex; align-items:center; gap:10px; flex:none">
+      <button class="btn btn-danger" style="padding:4px 9px; font-size:10px" onclick="event.stopPropagation(); eliminarModuloYRefrescar('${m.id}')">Eliminar módulo</button>
+      <span class="modulo-chevron ${expandido ? 'open' : ''}">${ICON.chevronRight}</span>
+    </div>
   </div>`;
 }
 
@@ -283,26 +294,29 @@ function renderPreguntaRow(p){
   </div>`;
 }
 
-function renderModuloCard(m, esPrimero, esUltimo){
+function renderModuloCard(m, esPrimero, esUltimo, expandido){
   if(m.tipo === 'test'){
     const propias = getPreguntasDe(m.id);
     const nContenido = getPreguntasEvaluacion(m.id).length - propias.length;
-    return `<div class="card" style="margin-bottom:12px; border:1px dashed var(--border)">
-      ${moduloHeader(m, esPrimero, esUltimo, true)}
-      <div class="alert alert-info" style="font-size:10px">ℹ Módulo de <b>evaluación final</b>. Reúne automáticamente los <b>${nContenido}</b> cuestionario${nContenido === 1 ? '' : 's'} de los módulos de contenido y puedes sumarle preguntas nuevas exclusivas de esta evaluación.</div>
-      <div class="label-upper" style="font-size:9px; margin:12px 0 4px">Preguntas nuevas de la evaluación final</div>
-      ${propias.length ? propias.map(renderPreguntaRow).join('') : '<div class="txt-3" style="font-size:10px">Aún no hay preguntas propias — la evaluación usará solo las de los módulos de contenido.</div>'}
-      ${renderFormularioPregunta(m.id)}
+    return `<div class="card modulo-card ${expandido ? 'expanded' : ''}" style="margin-bottom:10px; border:1px dashed var(--border)">
+      ${moduloHeader(m, esPrimero, esUltimo, true, expandido)}
+      ${expandido ? `<div class="modulo-body">
+        <div class="alert alert-info" style="font-size:10px">ℹ Módulo de <b>evaluación final</b>. Reúne automáticamente los <b>${nContenido}</b> cuestionario${nContenido === 1 ? '' : 's'} de los módulos de contenido y puedes sumarle preguntas nuevas exclusivas de esta evaluación.</div>
+        <div class="label-upper" style="font-size:9px; margin:12px 0 4px">Preguntas nuevas de la evaluación final</div>
+        ${propias.length ? propias.map(renderPreguntaRow).join('') : '<div class="txt-3" style="font-size:10px">Aún no hay preguntas propias — la evaluación usará solo las de los módulos de contenido.</div>'}
+        ${renderFormularioPregunta(m.id)}
+      </div>` : ''}
     </div>`;
   }
 
   const capitulos = getCapitulosDe(m.id);
   const preguntas = getPreguntasDe(m.id);
   const icoFor = t => t === 'pdf' ? '📄' : t === 'video' ? '▶' : '📝';
-  return `<div class="card" style="margin-bottom:12px">
-    ${moduloHeader(m, esPrimero, esUltimo, false)}
+  return `<div class="card modulo-card ${expandido ? 'expanded' : ''}" style="margin-bottom:10px">
+    ${moduloHeader(m, esPrimero, esUltimo, false, expandido)}
+    ${expandido ? `<div class="modulo-body">
 
-    <div class="label-upper" style="font-size:9px; margin:8px 0 4px">Actividades del módulo</div>
+    <div class="label-upper" style="font-size:9px; margin:0 0 4px">Actividades del módulo</div>
     ${capitulos.length ? capitulos.map(c => capEnEdicion === c.id ? renderCapituloEdit(c) : `<div style="display:flex; gap:8px; padding:5px 0; font-size:10px; align-items:center; border-bottom:1px solid var(--border-subtle)" class="txt-2">
       <span>${icoFor(c.tipo)}</span><span style="font-weight:600; flex:1; min-width:0">${c.titulo}</span>
       <span class="chip">${tipoLabelCap(c.tipo)}</span>
@@ -326,6 +340,7 @@ function renderModuloCard(m, esPrimero, esUltimo){
     <div class="label-upper" style="font-size:9px; margin:14px 0 4px">📋 Test del módulo (opcional — mismos tipos que califica la IA)</div>
     ${preguntas.length ? preguntas.map(renderPreguntaRow).join('') : '<div class="txt-3" style="font-size:10px">Sin test configurado — el módulo solo pide reflexión libre.</div>'}
     ${renderFormularioPregunta(m.id)}
+    </div>` : ''}
   </div>`;
 }
 

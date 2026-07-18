@@ -260,6 +260,17 @@ tr.clickable:hover .row-select{text-decoration:underline}
 .order-ctrl button:hover{background:var(--bg-secondary)}
 .order-ctrl button:disabled{opacity:.3; cursor:default}
 
+/* ============ MÓDULOS — acordeón (CU-9) ============ */
+.modulo-card{padding:0; overflow:hidden}
+.modulo-header{display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; padding:14px 16px; transition:.12s}
+.modulo-header:hover{background:var(--bg-secondary)}
+.modulo-card.expanded .modulo-header{border-bottom:1px solid var(--border-subtle)}
+.modulo-header .m-title{font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.modulo-chevron{color:var(--text-3); display:flex; align-items:center; flex:none; transition:transform .15s, color .15s}
+.modulo-chevron svg{width:12px; height:12px}
+.modulo-chevron.open{transform:rotate(90deg); color:var(--accent)}
+.modulo-body{padding:16px}
+
 /* ============ SEARCH INPUT (CU-7) ============ */
 .search-wrap{position:relative}
 .search-wrap input{padding-left:30px}
