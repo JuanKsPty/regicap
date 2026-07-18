@@ -74,11 +74,10 @@ Examen opcional al final de un Módulo (CU-9). El `tipo` es exactamente el que u
 | `id` | string | |
 | `moduloId` | string → Modulo | |
 | `texto` | string | enunciado de la pregunta |
-| `tipo` | enum | `simple` \| `compuesta` \| `texto_libre` \| `cuantitativa` \| `cualitativa` |
+| `tipo` | enum | `simple` \| `texto_libre` \| `cuantitativa` \| `cualitativa` |
 | `peso` | number | % dentro del examen del módulo |
 | `opciones` | string[] | solo si `tipo=simple` |
 | `respuestaCorrecta` | string | solo si `tipo=simple` |
-| `subItems` | {texto, peso}[] | solo si `tipo=compuesta` |
 | `valorEsperado` / `tolerancia` | number / number(%) | solo si `tipo=cuantitativa` |
 | `rubrica` | string | solo si `tipo=texto_libre` o `cualitativa` — qué se espera en la respuesta |
 

@@ -86,13 +86,6 @@ function agregarModuloYRefrescar(capId){
   moduloExpandido = nuevo.id;
   navigate('registrar');
 }
-function agregarModuloTestYRefrescar(capId){
-  if(tieneModuloTest(capId)){ alert('Este curso ya tiene un módulo de evaluación final.'); return; }
-  const nuevo = crearModulo(capId, 'Evaluación final', 'test');
-  moduloExpandido = nuevo.id;
-  navigate('registrar');
-}
-
 function esc(s){ return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 /* Contenido adjuntado que aún no vive en el DOM (los PDF se leen como data
@@ -251,19 +244,17 @@ function renderGestionModulos(capId){
   <div style="display:flex; gap:6px; margin-bottom:8px; max-width:680px; flex-wrap:wrap">
     <input class="input" id="mod-input-${cap.id}" type="text" placeholder="Nombre del nuevo módulo de contenido" style="flex:1; min-width:220px">
     <button class="btn btn-primary" onclick="agregarModuloYRefrescar('${cap.id}')">+ Módulo</button>
-    ${tieneModuloTest(cap.id) ? '' : `<button class="btn" onclick="agregarModuloTestYRefrescar('${cap.id}')">🎯 + Evaluación final</button>`}
   </div>
-  <div class="txt-3" style="font-size:10px; margin-bottom:16px">Cada módulo puede tener actividades (PDF, lectura o video) y un test. La <b>evaluación final</b> es un módulo de tipo test opcional que reúne todos los cuestionarios en un solo formulario.</div>
+  <div class="txt-3" style="font-size:10px; margin-bottom:16px">Cada módulo puede tener actividades (PDF, lectura o video) y un test.</div>
   ${modulos.length ? modulos.map((m, i) => renderModuloCard(m, i === 0, i === modulos.length - 1, m.id === moduloExpandido)).join('')
     : '<div class="card txt-3" style="text-align:center; padding:20px">Esta capacitación aún no tiene módulos.</div>'}`;
 }
 
 function tipoLabelCap(tipo){ return tipo === 'pdf' ? 'PDF' : tipo === 'video' ? 'Video' : 'Lectura'; }
 
-const PREG_LABEL = { simple: 'Opción múltiple', compuesta: 'Compuesta', texto_libre: 'Texto libre', cuantitativa: 'Cuantitativa', cualitativa: 'Cualitativa' };
+const PREG_LABEL = { simple: 'Opción múltiple', texto_libre: 'Texto libre', cuantitativa: 'Cuantitativa', cualitativa: 'Cualitativa' };
 const PREG_HINT = {
   simple: 'La IA compara la respuesta del participante con la correcta (coincidencia exacta).',
-  compuesta: 'Varios sub-ítems evaluados por separado; el peso se reparte en partes iguales entre ellos.',
   texto_libre: 'Respuesta abierta breve; la IA la evalúa según la rúbrica que definas.',
   cuantitativa: 'Respuesta numérica; es correcta si cae dentro de la tolerancia sobre el valor esperado.',
   cualitativa: 'Respuesta argumentativa; la IA evalúa coherencia y profundidad según la rúbrica.',
@@ -352,7 +343,6 @@ function condicionalPreguntaHtml(moduloId, tipo){
     + campoCond(`q-correcta-${moduloId}`, 'Respuesta correcta (texto exacto)', 'type="text" placeholder="Ej. 32 bits"');
   if(tipo === 'cuantitativa') return campoCond(`q-valoresp-${moduloId}`, 'Valor esperado', 'type="number" placeholder="Ej. 8"')
     + campoCond(`q-tolerancia-${moduloId}`, 'Tolerancia (%)', 'type="number" placeholder="Ej. 10"');
-  if(tipo === 'compuesta') return campoCond(`q-subitems-${moduloId}`, 'Sub-ítems (separados por coma)', 'type="text" placeholder="Ej. Claridad, Profundidad, Ejemplos"');
   return campoCond(`q-rubrica-${moduloId}`, 'Rúbrica (qué se espera en la respuesta)', 'type="text" placeholder="Ej. menciona porción de red y porción de host"');
 }
 function renderCondicionalPregunta(moduloId){
@@ -369,7 +359,6 @@ function renderFormularioPregunta(moduloId){
       <div class="cond-field" style="flex:1; min-width:190px"><label>Tipo de pregunta</label>
         <select class="input" id="q-tipo-${moduloId}" onchange="renderCondicionalPregunta('${moduloId}')">
           <option value="simple">🔘 Opción múltiple</option>
-          <option value="compuesta">🧩 Compuesta (sub-ítems)</option>
           <option value="texto_libre">✍️ Texto libre</option>
           <option value="cuantitativa">🔢 Cuantitativa</option>
           <option value="cualitativa">💬 Cualitativa</option>
@@ -403,11 +392,6 @@ function agregarPreguntaYRefrescar(moduloId){
   } else if(tipo === 'cuantitativa'){
     data.valorEsperado = Number(document.getElementById(`q-valoresp-${moduloId}`).value) || 0;
     data.tolerancia = Number(document.getElementById(`q-tolerancia-${moduloId}`).value) || 0;
-  } else if(tipo === 'compuesta'){
-    const items = document.getElementById(`q-subitems-${moduloId}`).value.split(',').map(s => s.trim()).filter(Boolean);
-    if(items.length < 2){ alert('Ingresa al menos 2 sub-ítems.'); return; }
-    const pesoSub = Math.round(100 / items.length);
-    data.subItems = items.map(texto => ({ texto, peso: pesoSub }));
   } else {
     data.rubrica = document.getElementById(`q-rubrica-${moduloId}`).value.trim();
   }

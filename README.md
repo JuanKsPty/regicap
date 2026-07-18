@@ -97,7 +97,7 @@ Luego abre `http://localhost:5173`. (También puedes abrir `index.html` directam
 ## ⚙️ Detalles técnicos (mockup)
 
 - **Sin dependencias ni build**: HTML/CSS/JS vanilla. Cada portal carga solo su `*.screens.js`.
-- **IA simulada**: `simularCalificacionIA()` en `store.js` implementa cálculos deterministas por tipo de pregunta (simple, compuesta, texto libre, cuantitativa, cualitativa). No hay NLP real.
+- **IA simulada**: `simularCalificacionIA()` en `store.js` implementa cálculos deterministas por tipo de pregunta (simple, texto libre, cuantitativa, cualitativa). No hay NLP real.
 - **PDFs**: los del curso semilla viven en `assets/pdfs/`. Los que la Empresa adjunta desde la UI se guardan como *data URL* en `localStorage`, por eso hay un límite de ~3 MB por archivo.
 - **Editor de texto enriquecido**: basado en `contenteditable` + `document.execCommand` (negrita, cursiva, listas, cita, enlace).
 

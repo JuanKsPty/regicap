@@ -235,7 +235,7 @@ function getCapacitacionExtremos(){
 /* ============ SIMULACIÓN DE CU-4 (IA — sin interfaz propia) ============
    Implementa los cálculos de context.md por tipo de pregunta:
    simple → comparación exacta · cuantitativa → tolerancia sobre el valor
-   esperado · compuesta/texto libre/cualitativa → heurística determinística
+   esperado · texto libre/cualitativa → heurística determinística
    basada en la respuesta (no hay motor de NLP real en un mockup estático). */
 function simularCalificacionIA(contenidoCrudo, preguntas){
   let data = null;
@@ -261,14 +261,6 @@ function simularCalificacionIA(contenidoCrudo, preguntas){
         const errorPct = Math.abs(num - p.valorEsperado) / p.valorEsperado * 100;
         score = errorPct <= p.tolerancia ? 100 : Math.max(0, 100 - (errorPct - p.tolerancia) * 2);
       }
-    } else if(p.tipo === 'compuesta'){
-      const subValores = Array.isArray(valor) ? valor : [];
-      const pesosSub = p.subItems.reduce((a, s) => a + s.peso, 0) || 1;
-      score = p.subItems.reduce((acc, sub, i) => {
-        const texto = (subValores[i] || '').trim();
-        const subScore = Math.max(0, Math.min(100, 40 + Math.floor(texto.length / 4)));
-        return acc + subScore * (sub.peso / pesosSub);
-      }, 0);
     } else { /* texto_libre | cualitativa */
       const texto = (valor || '').trim();
       score = Math.max(0, Math.min(100, 45 + Math.min(50, Math.floor(texto.length / 5))));
@@ -360,10 +352,6 @@ function crearModulo(capacitacionId, nombre, tipo){
   db.modulos.push(nuevo);
   saveDB(db);
   return nuevo;
-}
-/* Un curso solo puede tener un módulo de evaluación final (tipo 'test'). */
-function tieneModuloTest(capacitacionId){
-  return loadDB().modulos.some(m => m.capacitacionId === capacitacionId && m.tipo === 'test');
 }
 function eliminarModulo(moduloId){
   const db = loadDB();

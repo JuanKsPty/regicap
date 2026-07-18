@@ -121,20 +121,17 @@ const SEED_DATA = {
   /* Examen (CU-9): mismos 5 tipos que califica la IA en CU-4. La mayoría de
      módulos no tiene examen configurado todavía (array vacío = estado válido). */
   preguntas: [
-    { id: 'q-simple-validacion', moduloId: 'm-ideacion', tipo: 'simple', peso: 20,
+    { id: 'q-simple-validacion', moduloId: 'm-ideacion', tipo: 'simple', peso: 25,
       texto: '¿Cuál de las siguientes NO es una técnica de validación de problema?',
       opciones: ['Encuestas', 'Entrevistas', 'Prototipo ficticio sin usuarios reales', 'Grupos focales'],
       respuestaCorrecta: 'Prototipo ficticio sin usuarios reales' },
-    { id: 'q-compuesta-entrevista', moduloId: 'm-ideacion', tipo: 'compuesta', peso: 20,
-      texto: 'Evalúa tu proceso de entrevistas a clientes',
-      subItems: [{ texto: 'Claridad de las preguntas formuladas', peso: 50 }, { texto: 'Calidad de la escucha activa', peso: 50 }] },
-    { id: 'q-textolibre-problema', moduloId: 'm-ideacion', tipo: 'texto_libre', peso: 20,
+    { id: 'q-textolibre-problema', moduloId: 'm-ideacion', tipo: 'texto_libre', peso: 25,
       texto: 'Describe el problema que estás validando y por qué crees que es real',
       rubrica: 'Se espera pertinencia, claridad y profundidad en la descripción del problema' },
-    { id: 'q-cuant-entrevistas-min', moduloId: 'm-ideacion', tipo: 'cuantitativa', peso: 20,
+    { id: 'q-cuant-entrevistas-min', moduloId: 'm-ideacion', tipo: 'cuantitativa', peso: 25,
       texto: '¿Cuántas entrevistas mínimas recomienda la guía para validar un problema?',
       valorEsperado: 10, tolerancia: 20 },
-    { id: 'q-cual-pivote', moduloId: 'm-ideacion', tipo: 'cualitativa', peso: 20,
+    { id: 'q-cual-pivote', moduloId: 'm-ideacion', tipo: 'cualitativa', peso: 25,
       texto: 'Justifica si tu emprendimiento debería pivotar según los resultados de tus entrevistas',
       rubrica: 'Se evalúa coherencia, viabilidad y profundidad del razonamiento' },
 

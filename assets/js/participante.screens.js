@@ -230,14 +230,12 @@ function renderVisorCapitulos(capitulos, numTest){
 }
 
 function renderPregunta(p){
-  const tipoLabel = { simple: 'Opción múltiple', compuesta: 'Compuesta', texto_libre: 'Texto libre', cuantitativa: 'Cuantitativa', cualitativa: 'Cualitativa' }[p.tipo];
+  const tipoLabel = { simple: 'Opción múltiple', texto_libre: 'Texto libre', cuantitativa: 'Cuantitativa', cualitativa: 'Cualitativa' }[p.tipo];
   let campo = '';
   if(p.tipo === 'simple'){
     campo = p.opciones.map(op => `<label class="exam-opt"><input type="radio" name="q-${p.id}" value="${op}"> ${op}</label>`).join('');
   } else if(p.tipo === 'cuantitativa'){
     campo = `<input class="input" type="number" id="qval-${p.id}" placeholder="Ingresa un valor numérico">`;
-  } else if(p.tipo === 'compuesta'){
-    campo = p.subItems.map((s, i) => `<div class="subitem-row"><label>${s.texto} (${s.peso}%)</label><textarea class="input" id="qval-${p.id}-${i}" rows="2"></textarea></div>`).join('');
   } else {
     campo = `<textarea class="input" id="qval-${p.id}" rows="3" placeholder="Escribe tu respuesta…"></textarea>`;
   }
@@ -252,7 +250,6 @@ function leerRespuestaPregunta(p){
     const sel = document.querySelector(`input[name="q-${p.id}"]:checked`);
     return sel ? sel.value : '';
   }
-  if(p.tipo === 'compuesta') return p.subItems.map((s, i) => document.getElementById(`qval-${p.id}-${i}`).value);
   const el = document.getElementById(`qval-${p.id}`);
   return el ? el.value : '';
 }
