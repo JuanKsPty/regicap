@@ -60,11 +60,11 @@ function listaPorRol(role){
 function existeEmail(role, email){
   return listaPorRol(role).some(u => u.email.toLowerCase() === email.toLowerCase());
 }
-function registrarUsuario(role, { nombre, email, tipo }){
+function registrarUsuario(role, { nombre, email, tipo, nombreEmpresa }){
   const db = loadDB();
   let nuevo;
   if(role === 'empresa'){
-    nuevo = { id: uid('e'), nombre, tipo: tipo || 'otro', email };
+    nuevo = { id: uid('e'), nombre: nombreEmpresa || nombre, contacto: nombre, tipo: tipo || 'otro', email };
     db.empresas.push(nuevo);
   } else if(role === 'participante'){
     nuevo = { id: uid('p'), nombre, email };

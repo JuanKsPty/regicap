@@ -42,7 +42,6 @@
       </div>
       <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar al sistema</button>
       <button class="btn btn-full" style="margin-top:8px" type="button" onclick="mostrarRegistro()">Crear una cuenta nueva</button>
-      <button class="login-link" onclick="return false" type="button">¿Olvidaste tu contraseña? Recuperar acceso</button>
     </div>
 
     <div class="login-card hidden" id="registerCard">
@@ -55,6 +54,10 @@
       <div class="field">
         <label>Nombre completo</label>
         <input class="input" id="regNombre" type="text" placeholder="Ej. Ana Torres" />
+      </div>
+      <div class="field hidden" id="regEmpresaNombreField">
+        <label>Nombre de la empresa</label>
+        <input class="input" id="regNombreEmpresa" type="text" placeholder="Ej. Cámara de Comercio" />
       </div>
       <div class="field hidden" id="regTipoField">
         <label>Tipo de organización</label>
@@ -121,7 +124,9 @@ document.querySelectorAll('#regRoleChips .role-chip').forEach(chip => {
   chip.onclick = () => {
     document.querySelectorAll('#regRoleChips .role-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
-    document.getElementById('regTipoField').classList.toggle('hidden', chip.dataset.role !== 'empresa');
+    const esEmpresa = chip.dataset.role === 'empresa';
+    document.getElementById('regTipoField').classList.toggle('hidden', !esEmpresa);
+    document.getElementById('regEmpresaNombreField').classList.toggle('hidden', !esEmpresa);
   };
 });
 document.querySelector('#regRoleChips .role-chip[data-role="participante"]').classList.add('active');
@@ -135,6 +140,7 @@ function doRegister(){
   const sel = document.querySelector('#regRoleChips .role-chip.active');
   const role = sel ? sel.dataset.role : 'participante';
   const nombre = document.getElementById('regNombre').value.trim();
+  const nombreEmpresa = document.getElementById('regNombreEmpresa').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const pass2 = document.getElementById('regPass2').value;
@@ -142,10 +148,11 @@ function doRegister(){
 
   document.getElementById('regError').classList.add('hidden');
   if(!nombre || !email || !pass) return mostrarErrorRegistro('Completa todos los campos obligatorios.');
+  if(role === 'empresa' && !nombreEmpresa) return mostrarErrorRegistro('Ingresa el nombre de la empresa.');
   if(pass !== pass2) return mostrarErrorRegistro('Las contraseñas no coinciden.');
   if(existeEmail(role, email)) return mostrarErrorRegistro('Ya existe una cuenta con ese correo.');
 
-  const nuevo = registrarUsuario(role, { nombre, email, tipo });
+  const nuevo = registrarUsuario(role, { nombre, email, tipo, nombreEmpresa });
   loginAs(role, nuevo.id);
   location.href = PAGE_BY_ROLE[role];
 }

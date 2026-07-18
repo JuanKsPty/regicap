@@ -28,11 +28,11 @@ El participante resuelve los módulos de la capacitación en la que está matric
 ### Inteligencia Artificial *(actor de sistema · interfaz ❌)*
 
 **CU-4 — Procesar resultados**
-La IA calcula automáticamente las calificaciones de las respuestas recibidas de cada módulo — respuestas simples y compuestas, texto libre, e información cuantitativa y cualitativa. **Este caso de uso no tiene interfaz propia**: se ejecuta de forma automática e inmediata cada vez que un participante envía respuestas en CU-3; sus resultados quedan disponibles para el Administrador en CU-5/CU-6/CU-7.
+La IA calcula automáticamente las calificaciones de las respuestas recibidas de cada módulo — respuestas simples, texto libre, e información cuantitativa y cualitativa. **Este caso de uso no tiene interfaz propia**: se ejecuta de forma automática e inmediata cada vez que un participante envía respuestas en CU-3; sus resultados quedan disponibles para el Administrador en CU-5/CU-6/CU-7.
 
 **Cálculos y procesos que ejecuta la IA:**
 
-1. **Normalización y tipificación** — por cada respuesta entrante se identifica su tipo, según el esquema de la pregunta definido por la Empresa al registrar el módulo: *simple, compuesta, texto libre, cuantitativa o cualitativa.*
+1. **Normalización y tipificación** — por cada respuesta entrante se identifica su tipo, según el esquema de la pregunta definido por la Empresa al registrar el módulo: *simple, texto libre, cuantitativa o cualitativa.*
 
 2. **Cálculo de puntaje según el tipo de respuesta:**
    | Tipo | Cálculo |
