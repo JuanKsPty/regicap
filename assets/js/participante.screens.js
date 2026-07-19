@@ -8,10 +8,10 @@ MENU = [
   { sec: 'Principal', items: [
     { id: 'gestionar', label: 'Administrar capacitaciones', icon: 'module' },
     { id: 'tomar', label: 'Tomar capacitaciones', icon: 'proc' },
-    { id: 'feedback', label: 'Recibir feedback', icon: 'feedback' },
+    { id: 'feedback', label: 'Revisar feedback', icon: 'feedback' },
   ] },
 ];
-TITLES = { gestionar: 'Administrar capacitaciones', tomar: 'Tomar capacitaciones', feedback: 'Recibir feedback' };
+TITLES = { gestionar: 'Administrar capacitaciones', tomar: 'Tomar capacitaciones', feedback: 'Revisar feedback' };
 
 let tabGestionar = 'activas';
 let capSeleccionada = null;
