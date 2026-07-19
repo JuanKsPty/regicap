@@ -347,11 +347,14 @@ SCREENS.tomar = () => {
       const cap = insc.capacitacion;
       const modulos = getModulosDe(cap.id);
       const enviadas = modulos.filter(m => getRespuestaConCalificacion(participanteId, m.id)?.respuesta.estado === 'enviada').length;
-      return `<div class="card" style="cursor:pointer" onclick="abrirTomar('${cap.id}')">
+      return `<div class="card clickable" title="Abrir ${cap.nombre}" onclick="abrirTomar('${cap.id}')">
         <div class="label-upper">${getEmpresaById(cap.empresaId).nombre}</div>
         <div class="m-name" style="font-size:13px; font-weight:600; margin:2px 0 8px">${cap.nombre}</div>
         <div class="progress"><span style="width:${modulos.length ? Math.round(enviadas / modulos.length * 100) : 0}%; background:${COLORS.accent}"></span></div>
-        <div class="txt-3" style="font-size:10px; margin-top:6px">${enviadas}/${modulos.length} módulos completados</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px">
+          <div class="txt-3" style="font-size:10px">${enviadas}/${modulos.length} módulos completados</div>
+          <div class="card-hint">Continuar ${ICON.chevronRight}</div>
+        </div>
       </div>`;
     }).join('')}</div>`;
   }

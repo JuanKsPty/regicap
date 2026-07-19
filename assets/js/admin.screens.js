@@ -9,10 +9,10 @@ MENU = [
     { id: 'resultados', label: 'Consultar resultados', icon: 'chart' },
   ] },
   { sec: 'Gestión', items: [
-    { id: 'feedback', label: 'Entregar feedback', icon: 'feedback' },
+    { id: 'feedback', label: 'Revisar feedback', icon: 'feedback' },
   ] },
 ];
-TITLES = { resultados: 'Consultar resultados', feedback: 'Entregar feedback' };
+TITLES = { resultados: 'Consultar resultados', feedback: 'Revisar feedback' };
 
 let capDrill = null;
 let analisisParticipanteId = null;
