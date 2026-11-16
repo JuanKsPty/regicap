@@ -1,5 +1,5 @@
 # API + worker de REGICAP (misma imagen; el comando decide el proceso).
-#   api:     node apps/api/dist/main.js
+#   api:     sh apps/api/docker-start.sh   (migra + arranca; en compose local se usa node apps/api/dist/main.js)
 #   worker:  node apps/api/dist/worker.js
 #   migrate: pnpm --filter @regicap/db migrate:deploy && … seed
 FROM node:22-alpine AS base
@@ -16,4 +16,4 @@ ENV NODE_ENV=production
 COPY --from=build /app /app
 WORKDIR /app
 EXPOSE 3001
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["sh", "apps/api/docker-start.sh"]
