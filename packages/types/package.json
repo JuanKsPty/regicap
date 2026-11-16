@@ -1,0 +1,23 @@
+{
+  "name": "@regicap/types",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Esquemas zod, DTOs y enumeraciones compartidos por web y API (RNF-07)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@regicap/config": "workspace:*",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
