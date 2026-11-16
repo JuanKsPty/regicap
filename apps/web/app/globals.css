@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/* Componentes de @regicap/ui (Tailwind necesita saber dónde buscar clases) */
+@source '../../../packages/ui/src';
+
+/* ───────── Tokens de diseño (docs/context.md §2) ───────── */
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', 'Segoe UI', system-ui, sans-serif;
+
+  --color-navy: #0f1b3d;
+  --color-navy-2: #1a2a57;
+  --color-primary: #185fa5;
+  --color-primary-hover: #134f8a;
+  --color-primary-light: #ebf3fd;
+
+  --color-bg: #f4f6fa;
+  --color-card: #ffffff;
+  --color-bg-2: #eff1f7;
+  --color-border: #dde2ec;
+  --color-border-subtle: #eff1f7;
+
+  --color-fg: #1a2140;
+  --color-fg-2: #5c6480;
+  --color-fg-3: #8a91ab;
+
+  --color-success: #1d9e75;
+  --color-success-bg: #e1f5ee;
+  --color-success-fg: #0f6e56;
+  --color-warning: #ef9f27;
+  --color-warning-bg: #faeeda;
+  --color-warning-bg2: #fffbeb;
+  --color-warning-fg: #854f0b;
+  --color-danger: #e24b4a;
+  --color-danger-bg: #fceaea;
+  --color-danger-fg: #a32d2d;
+  --color-info: #378add;
+
+  /* Color de rol (sidebar activo + avatar) */
+  --color-rol-admin: #185fa5;
+  --color-rol-participante: #1d9e75;
+  --color-rol-empresa: #b4690e;
+
+  --shadow-card: 0 1px 2px rgba(15, 27, 61, 0.04);
+  --shadow-pop: 0 4px 24px rgba(0, 0, 0, 0.14);
+  --radius-card: 10px;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer base {
+  html {
+    font-size: 14px;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  /* Los controles táctiles se agrandan en móvil para evitar el zoom de iOS al enfocar */
+  @media (max-width: 640px) {
+    input, select, textarea { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+/* Contenido de lecturas (HTML saneado por la API) */
+.contenido-rico { font-size: 15px; line-height: 1.8; color: var(--color-fg); }
+.contenido-rico p { margin: 0 0 1em; }
+.contenido-rico ul { list-style: disc; padding-left: 1.4em; margin: 0 0 1em; }
+.contenido-rico ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 1em; }
+.contenido-rico blockquote { border-left: 3px solid var(--color-primary); background: var(--color-primary-light); padding: 0.6em 1em; margin: 0 0 1em; border-radius: 0 8px 8px 0; }
+.contenido-rico a { color: var(--color-primary); text-decoration: underline; }
+.contenido-rico h2, .contenido-rico h3 { font-weight: 700; margin: 1.2em 0 0.5em; }
+
+.rise { animation: rise 0.28s ease-out both; }
+
+/* Editor de texto enriquecido */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-fg-3);
+  pointer-events: none;
+}
