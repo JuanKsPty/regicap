@@ -1,0 +1,64 @@
+# Backend de REGICAP en Dokploy: API (NestJS) + worker de calificación (BullMQ).
+# Fase 2 §3.4: «api» y «worker» son dos contenedores de la MISMA imagen, igual que en
+# docker-compose.yml. PostgreSQL, Redis, MinIO y la web son servicios aparte del proyecto.
+#
+# Rutas (dominio en Dokploy):  regicap.juank.tech/api → regicap-api:3001
+# Variables: pestaña Environment del compose (ver deploy/README.md). Los nombres de
+# servicio llevan prefijo «regicap-» porque se unen a `dokploy-network` (compartida).
+
+name: regicap-backend
+
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: apps/api/Dockerfile
+  image: regicap-backend:dokploy
+  restart: unless-stopped
+  networks: [default, dokploy-network]
+
+x-env: &env
+  NODE_ENV: production
+  DATABASE_URL: ${DATABASE_URL:?define DATABASE_URL}
+  REDIS_URL: ${REDIS_URL:?define REDIS_URL}
+  S3_ENDPOINT: ${S3_ENDPOINT:?define S3_ENDPOINT}
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:?define S3_PUBLIC_ENDPOINT}
+  S3_PUBLIC_PATH_PREFIX: ${S3_PUBLIC_PATH_PREFIX:-/files}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-regicap}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-regicap}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?define S3_SECRET_KEY}
+  S3_FORCE_PATH_STYLE: "true"
+  JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+  COOKIE_SECURE: ${COOKIE_SECURE:-true}
+  IA_PROVIDER: ${IA_PROVIDER:-mock}
+  IA_MOCK_FALLAR: ${IA_MOCK_FALLAR:-false}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+  CALIFICACION_BACKOFF_MS: ${CALIFICACION_BACKOFF_MS:-30000}
+
+services:
+  # Arranca aplicando las migraciones (y la demo si SEED_DEMO=true y la base está vacía)
+  regicap-api:
+    <<: *backend
+    environment:
+      <<: *env
+      API_PORT: "3001"
+      SEED_DEMO: ${SEED_DEMO:-false}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # Proceso permanente separado de la API (RNF-09): consume la cola y llama al IAProvider
+  regicap-worker:
+    <<: *backend
+    command: ["node", "apps/api/dist/worker.js"]
+    environment:
+      <<: *env
+
+networks:
+  dokploy-network:
+    external: true
