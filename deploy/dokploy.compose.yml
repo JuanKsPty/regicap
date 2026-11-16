@@ -1,0 +1,161 @@
+# REGICAP en Dokploy (Fase 2 · §3.4 Vista de despliegue)
+#
+# Todo el sistema en un solo compose: web, api, worker, postgres, redis y minio.
+# El proxy es el Traefik de Dokploy: los dominios se declaran en Dokploy
+# (mismo host, tres rutas) y NO se publica ningún puerto en el host:
+#
+#   regicap.juank.tech/        → regicap-web   :3000
+#   regicap.juank.tech/api     → regicap-api   :3001
+#   regicap.juank.tech/files   → regicap-minio :9000   (stripPath: URLs firmadas de PDF)
+#
+# Los nombres de servicio llevan prefijo «regicap-» porque web/api/minio se unen a
+# `dokploy-network`, compartida con otros proyectos (un `api` a secas chocaría).
+# Variables (pestaña Environment de Dokploy): ver deploy/dokploy.env.example
+
+name: regicap
+
+x-api: &api
+  build:
+    context: ..
+    dockerfile: apps/api/Dockerfile
+  image: regicap-api:dokploy
+  restart: unless-stopped
+  environment: &api-env
+    NODE_ENV: production
+    DATABASE_URL: postgresql://regicap:${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}@regicap-db:5432/regicap?schema=public
+    REDIS_URL: redis://regicap-redis:6379
+    S3_ENDPOINT: http://regicap-minio:9000
+    S3_PUBLIC_ENDPOINT: ${PUBLIC_URL:?define PUBLIC_URL}
+    S3_PUBLIC_PATH_PREFIX: /files
+    S3_REGION: us-east-1
+    S3_BUCKET: regicap
+    S3_ACCESS_KEY: regicap
+    S3_SECRET_KEY: ${S3_SECRET_KEY:?define S3_SECRET_KEY}
+    S3_FORCE_PATH_STYLE: "true"
+    JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET}
+    JWT_EXPIRES_IN: 8h
+    COOKIE_SECURE: "true"
+    IA_PROVIDER: ${IA_PROVIDER:-mock}
+    IA_MOCK_FALLAR: "false"
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+    CALIFICACION_BACKOFF_MS: "30000"
+
+services:
+  regicap-web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: regicap-web:dokploy
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://regicap-api:3001
+      JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET}
+    depends_on:
+      regicap-api:
+        condition: service_healthy
+    networks: [default, dokploy-network]
+
+  regicap-api:
+    <<: *api
+    command: ["node", "apps/api/dist/main.js"]
+    environment:
+      <<: *api-env
+      API_PORT: "3001"
+    depends_on:
+      regicap-migrate:
+        condition: service_completed_successfully
+      regicap-redis:
+        condition: service_healthy
+      regicap-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks: [default, dokploy-network]
+
+  # Worker de calificación (BullMQ): proceso permanente separado de la API (RNF-09)
+  regicap-worker:
+    <<: *api
+    command: ["node", "apps/api/dist/worker.js"]
+    depends_on:
+      regicap-migrate:
+        condition: service_completed_successfully
+      regicap-redis:
+        condition: service_healthy
+
+  # Migraciones en cada despliegue (+ datos de demostración solo si la base está vacía)
+  regicap-migrate:
+    <<: *api
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - pnpm --filter @regicap/db migrate:deploy && if [ "$$SEED_DEMO" = "true" ]; then pnpm --filter @regicap/db seed; fi
+    environment:
+      <<: *api-env
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      regicap-db:
+        condition: service_healthy
+      regicap-minio:
+        condition: service_healthy
+
+  regicap-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: regicap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD}
+      POSTGRES_DB: regicap
+    volumes:
+      - regicap-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U regicap -d regicap"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Cola persistente (AOF)
+  regicap-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - regicap-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Almacenamiento compatible con S3 (bucket privado; PDF solo con URL firmada)
+  regicap-minio:
+    image: bitnamilegacy/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: regicap
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?define S3_SECRET_KEY}
+      MINIO_DEFAULT_BUCKETS: regicap
+      MINIO_BROWSER: "off"
+    volumes:
+      - regicap-minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [default, dokploy-network]
+
+volumes:
+  regicap-db-data:
+  regicap-redis-data:
+  regicap-minio-data:
+
+networks:
+  dokploy-network:
+    external: true
