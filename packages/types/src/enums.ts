@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /** Enumeraciones compartidas (coinciden con los enums de Prisma). */
 
-export const ROLES = ['PARTICIPANTE', 'EMPRESA', 'ADMINISTRADOR'] as const;
+export const ROLES = ['PARTICIPANTE', 'EMPRESA', 'ADMINISTRADOR', 'SUPERADMIN'] as const;
 export type Rol = (typeof ROLES)[number];
 
 export const ESTADOS_CAPACITACION = ['BORRADOR', 'PUBLICADA'] as const;

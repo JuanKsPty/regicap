@@ -396,13 +396,105 @@ async function main() {
   r = await luis.get('/participante/feedback');
   check('CU-06 Luis ve el feedback de su Administrador (vigentes e históricas)', r.status === 200 && r.data.total >= 2 && r.data.grupos[0].items[0].administrador && r.data.grupos[0].puntaje !== null, JSON.stringify(r.data).slice(0, 200));
 
+  /* ───────────── Superadministrador: gestión de cuentas ───────────── */
+  if (process.env.SUPERADMIN_EMAIL) {
+    seccion('Superadministrador · gestión de cuentas');
+    const sup = nuevoCliente('superadmin');
+    r = await sup.post('/auth/login', { email: process.env.SUPERADMIN_EMAIL, password: process.env.SUPERADMIN_PASSWORD });
+    check('el superadmin inicia sesión (sin empresa)', r.status === 200 && r.data.rol === 'SUPERADMIN' && r.data.empresaId === null, JSON.stringify(r.data));
+    for (const ruta of ['/superadmin/usuarios', '/superadmin/empresas']) {
+      for (const cli of [part, diego, empCamara]) {
+        const x = await cli.get(ruta);
+        check(`${cli.nombre} → GET ${ruta} = 403`, x.status === 403, `status ${x.status}`);
+      }
+    }
+    for (const ruta of ['/admin/resultados', '/empresa/capacitaciones', '/participante/inscripciones', '/admin/feedback/participantes']) {
+      const x = await sup.get(ruta);
+      check(`el superadmin NO accede a datos de empresas: GET ${ruta} = 403`, x.status === 403, `status ${x.status}`);
+    }
+    r = await sup.get('/superadmin/usuarios');
+    check('lista cuentas de todos los roles', r.status === 200 && r.data.length >= 15 && ['PARTICIPANTE', 'EMPRESA', 'ADMINISTRADOR', 'SUPERADMIN'].every((rol) => r.data.some((u) => u.rol === rol)));
+    r = await sup.get('/superadmin/usuarios?q=redes&rol=ADMINISTRADOR');
+    check('filtra por texto y rol', r.data.length === 1 && r.data[0].rol === 'ADMINISTRADOR');
+    r = await sup.get('/superadmin/empresas');
+    check('lista empresas con sus conteos', r.status === 200 && r.data.some((e) => e.nombre === 'Cámara de Comercio' && e.usuarios >= 2 && e.capacitaciones >= 5));
+    const camara = r.data.find((e) => e.nombre === 'Cámara de Comercio');
+
+    const nuevoEmail = `nuevo-${sufijo}@prueba.co`;
+    r = await sup.post('/superadmin/usuarios', { rol: 'ADMINISTRADOR', nombre: 'Admin Nuevo', email: nuevoEmail, password: 'Inicial2026!' });
+    check('administrador sin empresa → 400 con mensaje junto al campo', r.status === 400 && r.data.campos.empresaId);
+    r = await sup.post('/superadmin/usuarios', { rol: 'ADMINISTRADOR', nombre: 'Admin Nuevo', email: nuevoEmail, password: 'Inicial2026!', empresaId: camara.id });
+    check('crea un Administrador en una empresa', r.status === 201 && r.data.empresaId === camara.id && r.data.activo === true);
+    const nuevoId = r.data.id;
+    r = await sup.post('/superadmin/usuarios', { rol: 'PARTICIPANTE', nombre: 'Dup', email: nuevoEmail, password: 'Inicial2026!' });
+    check('correo duplicado → 409', r.status === 409 && r.data.codigo === 'EMAIL_DUPLICADO');
+    r = await sup.post('/superadmin/usuarios', { rol: 'EMPRESA', nombre: 'Dueña', email: `emp-${sufijo}@prueba.co`, password: 'Inicial2026!', empresaNombre: `Nueva Org ${sufijo}`, empresaTipo: 'banco' });
+    check('crea una Empresa nueva junto con su primera cuenta', r.status === 201 && r.data.rol === 'EMPRESA' && r.data.empresaNombre === `Nueva Org ${sufijo}`);
+    const empId = r.data.id;
+    r = await sup.post('/superadmin/usuarios', { rol: 'SUPERADMIN', nombre: 'Otro Super', email: `sup2-${sufijo}@prueba.co`, password: 'Inicial2026!' });
+    check('crea otro Superadministrador', r.status === 201 && r.data.empresaId === null);
+    const sup2Id = r.data.id;
+
+    // La cuenta nueva funciona; al desactivarla pierde acceso de inmediato
+    const adminNuevo = nuevoCliente('admin nuevo');
+    r = await adminNuevo.post('/auth/login', { email: nuevoEmail, password: 'Inicial2026!' });
+    check('la cuenta nueva inicia sesión', r.status === 200 && r.data.rol === 'ADMINISTRADOR');
+    check('y ve los resultados de SU empresa', (await adminNuevo.get('/admin/resultados')).status === 200);
+    r = await sup.patch(`/superadmin/usuarios/${nuevoId}`, { activo: false });
+    check('desactiva la cuenta', r.status === 200 && r.data.activo === false);
+    r = await adminNuevo.get('/admin/resultados');
+    check('su sesión abierta deja de servir (401)', r.status === 401, `status ${r.status}`);
+    r = await nuevoCliente('x').post('/auth/login', { email: nuevoEmail, password: 'Inicial2026!' });
+    check('no puede volver a entrar → 403 CUENTA_DESACTIVADA', r.status === 403 && r.data.codigo === 'CUENTA_DESACTIVADA');
+    await sup.patch(`/superadmin/usuarios/${nuevoId}`, { activo: true });
+
+    // Contraseña
+    r = await sup.post(`/superadmin/usuarios/${nuevoId}/password`, { password: 'corta' });
+    check('contraseña corta → 400', r.status === 400 && r.data.campos.password);
+    r = await sup.post(`/superadmin/usuarios/${nuevoId}/password`, { password: 'Cambiada2026!' });
+    check('cambia la contraseña (204)', r.status === 204);
+    check('la contraseña vieja ya no sirve', (await nuevoCliente('x').post('/auth/login', { email: nuevoEmail, password: 'Inicial2026!' })).status === 401);
+    check('la nueva sí', (await nuevoCliente('x').post('/auth/login', { email: nuevoEmail, password: 'Cambiada2026!' })).status === 200);
+
+    // Salvaguardas
+    const yo = (await sup.get('/auth/me')).data;
+    r = await sup.patch(`/superadmin/usuarios/${yo.id}`, { activo: false });
+    check('no puede desactivarse a sí mismo → 409', r.status === 409 && r.data.codigo === 'OPERACION_NO_PERMITIDA');
+    r = await sup.del(`/superadmin/usuarios/${yo.id}`);
+    check('no puede eliminarse a sí mismo → 409', r.status === 409);
+    const luisId = (await sup.get('/superadmin/usuarios?q=luis.perez')).data[0].id;
+    const diegoId = (await sup.get('/superadmin/usuarios?q=diego.ramirez')).data[0].id;
+    r = await sup.del(`/superadmin/usuarios/${diegoId}`);
+    check('un administrador que ya dio feedback no se elimina (se desactiva) → 409', r.status === 409);
+
+    // Eliminación (cascada controlada) — con un participante propio de la prueba
+    const pEmail = `elim-${sufijo}@prueba.co`;
+    const pElim = nuevoCliente('a eliminar');
+    await pElim.post('/auth/registro', { rol: 'PARTICIPANTE', nombre: 'A Eliminar', email: pEmail, password: PASS });
+    const catalogoElim = (await pElim.get('/catalogo?page=1')).data.items[0];
+    await pElim.post('/participante/inscripciones', { capacitacionId: catalogoElim.capacitacionId });
+    const pElimId = (await sup.get(`/superadmin/usuarios?q=${pEmail}`)).data[0].id;
+    r = await sup.del(`/superadmin/usuarios/${pElimId}`);
+    check('elimina un participante con inscripciones (204)', r.status === 204);
+    check('ya no existe y su sesión murió', (await sup.get(`/superadmin/usuarios?q=${pEmail}`)).data.length === 0 && (await pElim.get('/participante/inscripciones')).status === 401);
+    const huerf = psql(`SELECT count(*) FROM inscripcion i LEFT JOIN usuario u ON u.id=i.participante_id WHERE u.id IS NULL`);
+    if (huerf !== null) check('0 inscripciones huérfanas tras eliminar', huerf === '0', `huérfanas: ${huerf}`);
+    check('Luis sigue intacto', (await sup.get('/superadmin/usuarios?q=luis.perez')).data[0]?.id === luisId);
+
+    // Limpieza de lo creado en la prueba
+    for (const id of [nuevoId, empId, sup2Id]) await sup.del(`/superadmin/usuarios/${id}`);
+    const restantes = (await Promise.all([`nuevo-${sufijo}`, `emp-${sufijo}`, `sup2-${sufijo}`].map((e) => sup.get(`/superadmin/usuarios?q=${e}`)))).flatMap((x) => x.data);
+    check('limpia las cuentas de prueba', restantes.length === 0, JSON.stringify(restantes.map((u) => u.email)));
+  }
+
   /* ───────────── EC-03 / límite de intentos ───────────── */
   seccion('EC-03 Contraseñas con hash · límite de intentos');
   const planas = psql(`SELECT count(*) FROM usuario WHERE password_hash !~ '^\\$2[aby]\\$12\\$'`);
   if (planas !== null) check('EC-03 100 % de contraseñas con hash bcrypt (costo 12)', planas === '0', `sin hash: ${planas}`);
   const t = nuevoCliente('fuerza bruta');
   const intentos = [];
-  for (let i = 0; i < 14; i++) intentos.push((await t.post('/auth/login', { email: 'nadie@nada.co', password: 'x' })).status);
+  const limiteLogin = Number(process.env.LOGIN_THROTTLE_LIMIT ?? 10);
+  for (let i = 0; i < limiteLogin + 6; i++) intentos.push((await t.post('/auth/login', { email: 'nadie@nada.co', password: 'x' })).status);
   check('límite de intentos en /auth/login → 429', intentos.includes(429), intentos.join(','));
   const cuerpo429 = await t.post('/auth/login', { email: 'nadie@nada.co', password: 'x' });
   check('el 429 usa el formato { codigo, mensaje, campos }', cuerpo429.data.codigo === 'DEMASIADOS_INTENTOS' && cuerpo429.data.campos !== undefined);

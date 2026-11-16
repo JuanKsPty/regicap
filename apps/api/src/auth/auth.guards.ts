@@ -5,8 +5,20 @@ import type { Request } from 'express';
 import type { Rol } from '@regicap/types';
 import { PUBLIC_KEY, ROLES_KEY, type UsuarioAuth } from '../common/decorators';
 import { AppException } from '../common/errors';
+import { PrismaService } from '../prisma/prisma.service';
 
 export const COOKIE_TOKEN = 'regicap_token';
+
+/**
+ * Caché corta de «¿la cuenta existe y está activa?» para no consultar la BD en cada
+ * petición. Desactivar/eliminar una cuenta la invalida al instante en este proceso y,
+ * en cualquier caso, expira sola en unos segundos (reduce el compromiso de D-06).
+ */
+const TTL_SESION_MS = 15_000;
+const cuentas = new Map<string, { activa: boolean; hasta: number }>();
+export function invalidarSesion(usuarioId: string) {
+  cuentas.delete(usuarioId);
+}
 
 interface JwtPayload {
   sub: string;
@@ -24,6 +36,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -35,11 +48,21 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw this.sinSesion();
     try {
       const p = await this.jwt.verifyAsync<JwtPayload>(token);
+      if (!(await this.cuentaActiva(p.sub))) throw this.sinSesion();
       req.user = { id: p.sub, rol: p.rol, empresaId: p.empresaId ?? null };
       return true;
     } catch {
       throw this.sinSesion();
     }
+  }
+
+  private async cuentaActiva(id: string): Promise<boolean> {
+    const hit = cuentas.get(id);
+    if (hit && hit.hasta > Date.now()) return hit.activa;
+    const u = await this.prisma.usuario.findUnique({ where: { id }, select: { activo: true } });
+    const activa = !!u?.activo;
+    cuentas.set(id, { activa, hasta: Date.now() + TTL_SESION_MS });
+    return activa;
   }
 
   private sinSesion() {

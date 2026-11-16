@@ -18,6 +18,8 @@ enum Rol {
   PARTICIPANTE
   EMPRESA
   ADMINISTRADOR
+  /// Gestiona cuentas y empresas; no pertenece a ninguna Empresa ni ve resultados (RNF-03).
+  SUPERADMIN
 }
 
 enum EstadoCapacitacion {
@@ -85,8 +87,10 @@ model Usuario {
   passwordHash String   @map("password_hash") @db.VarChar(72)
   nombre       String   @db.VarChar(120)
   rol          Rol
-  /// Obligatorio si rol ≠ PARTICIPANTE (se valida en AuthService + CHECK en SQL).
+  /// Obligatorio para EMPRESA y ADMINISTRADOR; nulo para PARTICIPANTE y SUPERADMIN (CHECK en SQL).
   empresaId    String?  @map("empresa_id") @db.Uuid
+  /// Una cuenta desactivada no puede iniciar sesión ni usar la API.
+  activo       Boolean  @default(true)
   creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
 
   empresa             Empresa?      @relation(fields: [empresaId], references: [id])

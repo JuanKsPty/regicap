@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, GraduationCap, LogOut, Menu, MessageSquare, PlayCircle, Sparkles, Users, X } from 'lucide-react';
+import { BarChart3, BookOpen, Building2, GraduationCap, LogOut, Menu, MessageSquare, PlayCircle, ShieldCheck, Sparkles, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -46,14 +46,24 @@ const MENUS: Record<Rol, Grupo[]> = {
     },
     { titulo: 'Gestión', items: [{ href: '/admin/feedback', label: 'Entregar feedback', icon: MessageSquare }] },
   ],
+  SUPERADMIN: [
+    {
+      titulo: 'Cuentas',
+      items: [
+        { href: '/superadmin/usuarios', label: 'Usuarios', icon: ShieldCheck },
+        { href: '/superadmin/empresas', label: 'Empresas', icon: Building2 },
+      ],
+    },
+  ],
 };
 
-const ROL_ETIQUETA: Record<Rol, string> = { PARTICIPANTE: 'Participante', EMPRESA: 'Empresa', ADMINISTRADOR: 'Administrador' };
+const ROL_ETIQUETA: Record<Rol, string> = { PARTICIPANTE: 'Participante', EMPRESA: 'Empresa', ADMINISTRADOR: 'Administrador', SUPERADMIN: 'Superadministrador' };
 // Color de rol: tiñe el ítem activo y el avatar (docs/context.md §3)
 const ROL_COLOR: Record<Rol, { activo: string; avatar: string }> = {
   PARTICIPANTE: { activo: 'bg-rol-participante/20 text-white border-l-rol-participante', avatar: 'bg-rol-participante' },
   EMPRESA: { activo: 'bg-rol-empresa/25 text-white border-l-rol-empresa', avatar: 'bg-rol-empresa' },
   ADMINISTRADOR: { activo: 'bg-rol-admin/30 text-white border-l-rol-admin', avatar: 'bg-rol-admin' },
+  SUPERADMIN: { activo: 'bg-rol-super/30 text-white border-l-rol-super', avatar: 'bg-rol-super' },
 };
 
 export function Logo({ className }: { className?: string }) {

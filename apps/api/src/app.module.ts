@@ -15,6 +15,7 @@ import { ProgresoModule } from './progreso/progreso.module';
 import { RespuestasModule } from './respuestas/respuestas.module';
 import { ResultadosModule } from './resultados/resultados.module';
 import { StorageModule } from './storage/storage.module';
+import { SuperadminModule } from './superadmin/superadmin.module';
 
 /** Proceso HTTP: controladores + productor de la cola. El procesador vive en WorkerModule. */
 @Module({
@@ -33,6 +34,7 @@ import { StorageModule } from './storage/storage.module';
     CalificacionApiModule,
     ResultadosModule,
     FeedbackModule,
+    SuperadminModule,
   ],
   controllers: [HealthController],
   providers: [

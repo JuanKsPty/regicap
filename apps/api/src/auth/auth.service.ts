@@ -81,6 +81,9 @@ export class AuthService {
     if (!u || !ok) {
       throw new AppException(HttpStatus.UNAUTHORIZED, 'CREDENCIALES_INVALIDAS', 'Correo o contraseña incorrectos.');
     }
+    if (!u.activo) {
+      throw new AppException(HttpStatus.FORBIDDEN, 'CUENTA_DESACTIVADA', 'Tu cuenta está desactivada. Contacta al administrador de la plataforma.');
+    }
     return { usuario: aUsuarioDto(u), token: await this.firmar(u) };
   }
 

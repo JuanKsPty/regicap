@@ -17,7 +17,7 @@
     "db:reset": "pnpm --filter @regicap/db reset",
     "infra:up": "docker compose up -d postgres redis minio",
     "infra:down": "docker compose down",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node --env-file=.env scripts/verify.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

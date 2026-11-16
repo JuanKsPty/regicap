@@ -16,6 +16,10 @@ import type {
   CatalogoDto,
   ContenidoRespuesta,
   CrearAdministradorInput,
+  CrearUsuarioInput,
+  EmpresaGestionDto,
+  FiltroUsuarios,
+  UsuarioGestionDto,
   DetalleCapacitacionDto,
   FeedbackContextoDto,
   FeedbackInput,
@@ -203,4 +207,20 @@ export function useEnviarFeedback() {
     mutationFn: (v: FeedbackInput) => api('/admin/feedback', { method: 'POST', body: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['feedback'] }),
   });
+}
+
+/* ───────── Superadmin · gestión de cuentas ───────── */
+export const useUsuariosGestion = (f: FiltroUsuarios) =>
+  useQuery({ queryKey: ['super', 'usuarios', f], queryFn: () => api<UsuarioGestionDto[]>(`/superadmin/usuarios${qs(f)}`), placeholderData: keepPreviousData });
+export const useEmpresasGestion = () => useQuery({ queryKey: ['super', 'empresas'], queryFn: () => api<EmpresaGestionDto[]>('/superadmin/empresas') });
+
+export function useUsuariosMutations() {
+  const qc = useQueryClient();
+  const inv = () => qc.invalidateQueries({ queryKey: ['super'] });
+  return {
+    crear: useMutation({ mutationFn: (v: CrearUsuarioInput) => api<UsuarioGestionDto>('/superadmin/usuarios', { method: 'POST', body: v }), onSuccess: inv }),
+    actualizar: useMutation({ mutationFn: (v: { id: string; nombre?: string; activo?: boolean }) => api<UsuarioGestionDto>(`/superadmin/usuarios/${v.id}`, { method: 'PATCH', body: { nombre: v.nombre, activo: v.activo } }), onSuccess: inv }),
+    password: useMutation({ mutationFn: (v: { id: string; password: string }) => api(`/superadmin/usuarios/${v.id}/password`, { method: 'POST', body: { password: v.password } }) }),
+    eliminar: useMutation({ mutationFn: (id: string) => api(`/superadmin/usuarios/${id}`, { method: 'DELETE' }), onSuccess: inv }),
+  };
 }

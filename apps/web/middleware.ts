@@ -11,8 +11,9 @@ const HOME: Record<Rol, string> = {
   PARTICIPANTE: '/participante/capacitaciones',
   EMPRESA: '/empresa/capacitaciones',
   ADMINISTRADOR: '/admin/resultados',
+  SUPERADMIN: '/superadmin/usuarios',
 };
-const PREFIJO: Record<string, Rol> = { '/participante': 'PARTICIPANTE', '/empresa': 'EMPRESA', '/admin': 'ADMINISTRADOR' };
+const PREFIJO: Record<string, Rol> = { '/participante': 'PARTICIPANTE', '/empresa': 'EMPRESA', '/admin': 'ADMINISTRADOR', '/superadmin': 'SUPERADMIN' };
 
 async function rolDe(req: NextRequest): Promise<Rol | null> {
   const token = req.cookies.get('regicap_token')?.value;

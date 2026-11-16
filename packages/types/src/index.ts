@@ -5,4 +5,5 @@ export * from './capacitacion';
 export * from './modulo';
 export * from './participante';
 export * from './admin';
+export * from './superadmin';
 export * from './util';

@@ -15,6 +15,14 @@ const email = z
 
 export const MIN_PASSWORD = 8;
 
+/** Piezas reutilizadas por los esquemas de gestión de cuentas (superadmin). */
+export const emailSchema = email;
+export const textoObligatorio = obligatorio;
+export const passwordSchema = z
+  .string({ error: MSG_CAMPOS_OBLIGATORIOS })
+  .min(MIN_PASSWORD, `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`)
+  .max(72, 'Máximo 72 caracteres.');
+
 export const loginSchema = z.object({
   email,
   password: z.string({ error: MSG_CAMPOS_OBLIGATORIOS }).min(1, MSG_CAMPOS_OBLIGATORIOS),

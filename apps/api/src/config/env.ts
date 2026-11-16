@@ -42,6 +42,8 @@ export interface Env {
     timeoutMs: number;
   };
   calificacion: { backoffMs: number; intentos: number };
+  /** Primer superadmin: se crea al arrancar si no existe (no se sobrescribe su contraseña). */
+  superadmin: { email: string; password: string; nombre: string } | null;
 }
 
 export function cargarEnv(): Env {
@@ -82,6 +84,10 @@ export function cargarEnv(): Env {
     },
     // 5 reintentos con espera exponencial (30 s, 60 s, 120 s…) — Fase 2 §2.3
     calificacion: { backoffMs: num(e.CALIFICACION_BACKOFF_MS, 30_000), intentos: 5 },
+    superadmin:
+      e.SUPERADMIN_EMAIL && e.SUPERADMIN_PASSWORD
+        ? { email: e.SUPERADMIN_EMAIL.trim().toLowerCase(), password: e.SUPERADMIN_PASSWORD, nombre: e.SUPERADMIN_NOMBRE?.trim() || 'Superadministrador' }
+        : null,
   };
 }
 
