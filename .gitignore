@@ -3,13 +3,22 @@
 *.swp
 *~
 
-# Vercel
-.vercel
+# Node
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+
+# Build
+dist/
+.next/
+.turbo/
+*.tsbuildinfo
+coverage/
 
 # Variables de entorno / secretos
 .env
 .env.*
+!.env.example
 
-# Node (por si se agregan herramientas)
-node_modules/
-npm-debug.log*
+# Vercel (prototipo estático)
+.vercel

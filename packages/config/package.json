@@ -1,0 +1,7 @@
+{
+  "name": "@regicap/config",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Configuración compartida (tsconfig) del monorepo REGICAP",
+  "files": ["tsconfig.base.json", "tsconfig.node.json", "tsconfig.next.json"]
+}
