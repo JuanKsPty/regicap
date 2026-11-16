@@ -1,0 +1,194 @@
+# REGICAP — entorno completo (Fase 2 · §3.4 Vista de despliegue)
+#
+#   Solo infraestructura (desarrollo con `pnpm dev`):
+#       docker compose up -d postgres redis minio
+#   Todo el sistema (proxy + web + api + worker + datos):
+#       docker compose up -d --build
+#       docker compose --profile tools run --rm migrate     # migraciones + seed demo
+#
+# Los puertos de postgres/redis/minio se publican en el host SOLO para
+# desarrollo; en el VPS (Dokploy) quita las secciones `ports:` y la red
+# interna queda aislada (RNF-03).
+
+name: regicap
+
+x-env-api: &env-api
+  NODE_ENV: production
+  DATABASE_URL: postgresql://${POSTGRES_USER:-regicap}:${POSTGRES_PASSWORD:-regicap}@postgres:5432/${POSTGRES_DB:-regicap}?schema=public
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT_COMPOSE:-http://localhost:8080}
+  S3_PUBLIC_PATH_PREFIX: ${S3_PUBLIC_PATH_PREFIX_COMPOSE:-/files}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-regicap}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-regicap}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-regicap-secret}
+  S3_FORCE_PATH_STYLE: "true"
+  JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET en .env}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  IA_PROVIDER: ${IA_PROVIDER:-mock}
+  IA_MOCK_FALLAR: ${IA_MOCK_FALLAR:-false}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+  CALIFICACION_BACKOFF_MS: ${CALIFICACION_BACKOFF_MS:-30000}
+
+services:
+  # ── Proxy inverso: único punto expuesto a Internet ───────────────────────
+  proxy:
+    image: traefik:v3.6
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "${PROXY_PORT:-8080}:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - web
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:3001
+      JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET en .env}
+    depends_on:
+      - api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=PathPrefix(`/`)
+      - traefik.http.routers.web.priority=1
+      - traefik.http.routers.web.entrypoints=web
+      - traefik.http.services.web.loadbalancer.server.port=3000
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/main.js"]
+    environment:
+      <<: *env-api
+      API_PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=PathPrefix(`/api`)
+      - traefik.http.routers.api.priority=10
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=3001
+
+  # Worker de calificación (BullMQ): proceso permanente separado de la API (RNF-09)
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/worker.js"]
+    environment:
+      <<: *env-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Migraciones + seed de demostración (se ejecuta a demanda y termina)
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command:
+      - sh
+      - -c
+      - pnpm --filter @regicap/db migrate:deploy && if [ "$$SEED_DEMO" = "true" ]; then pnpm --filter @regicap/db seed; fi
+    environment:
+      <<: *env-api
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  # ── Persistencia ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-regicap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-regicap}
+      POSTGRES_DB: ${POSTGRES_DB:-regicap}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Almacenamiento compatible con S3 (intercambiable por Cloudflare R2 / AWS S3).
+  # Nota: minio/minio dejó de publicarse en Docker Hub/Quay; se usa la imagen
+  # congelada de Bitnami (MinIO real). El bucket (privado) se crea solo.
+  minio:
+    image: bitnamilegacy/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-regicap}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-regicap-secret}
+      MINIO_DEFAULT_BUCKETS: ${S3_BUCKET:-regicap}
+      # El navegador sube el PDF directo con una URL firmada → permitir CORS
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.files.rule=PathPrefix(`/files`)
+      - traefik.http.routers.files.priority=20
+      - traefik.http.routers.files.entrypoints=web
+      - traefik.http.routers.files.middlewares=files-strip
+      - traefik.http.middlewares.files-strip.stripprefix.prefixes=/files
+      - traefik.http.services.files.loadbalancer.server.port=9000
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
