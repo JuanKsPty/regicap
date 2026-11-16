@@ -1,0 +1,253 @@
+// REGICAP — modelo de datos (Fase 2 §6, figura 12)
+//
+// Nota: el índice único PARCIAL de inscripción (una inscripción activa por
+// capacitación, RF-07) no lo modela Prisma; está en la migración SQL manual
+// `20261116151700_integridad_y_unicidad` (decisión D-05/D-12).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  PARTICIPANTE
+  EMPRESA
+  ADMINISTRADOR
+}
+
+enum EstadoCapacitacion {
+  BORRADOR
+  PUBLICADA
+}
+
+enum EstadoInscripcion {
+  PENDIENTE
+  EN_CURSO
+  COMPLETADA
+  CANCELADA
+}
+
+enum TipoModulo {
+  CONTENIDO
+  TEST
+}
+
+enum TipoActividad {
+  PDF
+  TEXTO
+  VIDEO
+}
+
+enum TipoPregunta {
+  SIMPLE
+  TEXTO_LIBRE
+  CUANTITATIVA
+  CUALITATIVA
+}
+
+enum EstadoRespuesta {
+  BORRADOR
+  ENVIADA
+}
+
+enum EstadoCalificacion {
+  PENDIENTE
+  CALIFICADA
+  ERROR
+}
+
+enum Nivel {
+  ALTO
+  MEDIO
+  BAJO
+}
+
+model Empresa {
+  id             String          @id @default(uuid()) @db.Uuid
+  nombre         String          @unique @db.VarChar(120)
+  tipo           String          @default("otro") @db.VarChar(40)
+  creadoEn       DateTime        @default(now()) @map("creado_en") @db.Timestamptz
+  usuarios       Usuario[]
+  capacitaciones Capacitacion[]
+  decisiones     DecisionAplicada[]
+
+  @@map("empresa")
+}
+
+model Usuario {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(160)
+  passwordHash String   @map("password_hash") @db.VarChar(72)
+  nombre       String   @db.VarChar(120)
+  rol          Rol
+  /// Obligatorio si rol ≠ PARTICIPANTE (se valida en AuthService + CHECK en SQL).
+  empresaId    String?  @map("empresa_id") @db.Uuid
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz
+
+  empresa             Empresa?      @relation(fields: [empresaId], references: [id])
+  inscripciones       Inscripcion[]
+  feedbacksEscritos   Feedback[]    @relation("FeedbackAdministrador")
+  feedbacksRecibidos  Feedback[]    @relation("FeedbackParticipante")
+
+  @@index([empresaId])
+  @@map("usuario")
+}
+
+model Capacitacion {
+  id            String             @id @default(uuid()) @db.Uuid
+  empresaId     String             @map("empresa_id") @db.Uuid
+  nombre        String             @db.VarChar(120)
+  duracion      String             @db.VarChar(40)
+  estado        EstadoCapacitacion @default(BORRADOR)
+  creadoEn      DateTime           @default(now()) @map("creado_en") @db.Timestamptz
+  actualizadoEn DateTime           @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  empresa       Empresa       @relation(fields: [empresaId], references: [id])
+  modulos       Modulo[]
+  inscripciones Inscripcion[]
+  feedbacks     Feedback[]
+
+  @@unique([empresaId, nombre])
+  @@index([estado])
+  @@map("capacitacion")
+}
+
+model Modulo {
+  id             String     @id @default(uuid()) @db.Uuid
+  capacitacionId String     @map("capacitacion_id") @db.Uuid
+  nombre         String     @db.VarChar(120)
+  tipo           TipoModulo @default(CONTENIDO)
+  orden          Int
+
+  capacitacion Capacitacion @relation(fields: [capacitacionId], references: [id], onDelete: Cascade)
+  actividades  Actividad[]
+  preguntas    Pregunta[]
+  respuestas   Respuesta[]
+
+  @@unique([capacitacionId, orden])
+  @@map("modulo")
+}
+
+model Actividad {
+  id         String        @id @default(uuid()) @db.Uuid
+  moduloId   String        @map("modulo_id") @db.Uuid
+  titulo     String        @db.VarChar(160)
+  tipo       TipoActividad
+  /// TEXTO: HTML saneado · VIDEO: enlace de YouTube · PDF: nombre original del archivo
+  contenido  String?       @db.Text
+  /// PDF: clave del objeto en S3 (la BD no guarda el archivo, D-10)
+  archivoKey String?       @map("archivo_key") @db.VarChar(300)
+  orden      Int
+
+  modulo Modulo @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+
+  @@index([moduloId, orden])
+  @@map("actividad")
+}
+
+model Pregunta {
+  id            String       @id @default(uuid()) @db.Uuid
+  moduloId      String       @map("modulo_id") @db.Uuid
+  texto         String       @db.Text
+  tipo          TipoPregunta
+  peso          Decimal      @db.Decimal(5, 2)
+  /// SIMPLE: { opciones, respuestaCorrecta } · CUANTITATIVA: { valorEsperado, tolerancia }
+  configuracion Json?
+  /// TEXTO_LIBRE / CUALITATIVA: qué se espera en la respuesta
+  rubrica       String?      @db.Text
+  creadaEn      DateTime     @default(now()) @map("creada_en") @db.Timestamptz
+
+  modulo Modulo @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+
+  @@index([moduloId])
+  @@map("pregunta")
+}
+
+model Inscripcion {
+  id               String            @id @default(uuid()) @db.Uuid
+  participanteId   String            @map("participante_id") @db.Uuid
+  capacitacionId   String            @map("capacitacion_id") @db.Uuid
+  estado           EstadoInscripcion @default(PENDIENTE)
+  fechaInscripcion DateTime          @default(now()) @map("fecha_inscripcion") @db.Timestamptz
+  actualizadoEn    DateTime          @updatedAt @map("actualizado_en") @db.Timestamptz
+
+  participante Usuario      @relation(fields: [participanteId], references: [id])
+  capacitacion Capacitacion @relation(fields: [capacitacionId], references: [id], onDelete: Cascade)
+  respuestas   Respuesta[]
+
+  @@index([participanteId, estado])
+  @@index([capacitacionId, estado])
+  @@map("inscripcion")
+}
+
+model Respuesta {
+  id            String          @id @default(uuid()) @db.Uuid
+  inscripcionId String          @map("inscripcion_id") @db.Uuid
+  moduloId      String          @map("modulo_id") @db.Uuid
+  contenido     Json
+  estado        EstadoRespuesta @default(BORRADOR)
+  fechaEnvio    DateTime?       @map("fecha_envio") @db.Timestamptz
+  actualizadaEn DateTime        @default(now()) @updatedAt @map("actualizada_en") @db.Timestamptz
+
+  inscripcion  Inscripcion   @relation(fields: [inscripcionId], references: [id], onDelete: Cascade)
+  modulo       Modulo        @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  calificacion Calificacion?
+
+  @@unique([inscripcionId, moduloId])
+  @@index([moduloId])
+  @@map("respuesta")
+}
+
+model Calificacion {
+  id              String             @id @default(uuid()) @db.Uuid
+  respuestaId     String             @unique @map("respuesta_id") @db.Uuid
+  estado          EstadoCalificacion @default(PENDIENTE)
+  puntaje         Decimal?           @db.Decimal(5, 2)
+  nivel           Nivel?
+  criterioMasBajo String?            @map("criterio_mas_bajo") @db.VarChar(200)
+  intentos        Int                @default(0)
+  /// Puntaje por pregunta y criterios devueltos por la IA (insumo para feedback)
+  detalle         Json?
+  ultimoError     String?            @map("ultimo_error") @db.VarChar(500)
+  actualizadaEn   DateTime           @default(now()) @updatedAt @map("actualizada_en") @db.Timestamptz
+
+  respuesta Respuesta @relation(fields: [respuestaId], references: [id], onDelete: Cascade)
+
+  @@index([estado])
+  @@map("calificacion")
+}
+
+model Feedback {
+  id              String   @id @default(uuid()) @db.Uuid
+  administradorId String   @map("administrador_id") @db.Uuid
+  participanteId  String   @map("participante_id") @db.Uuid
+  capacitacionId  String   @map("capacitacion_id") @db.Uuid
+  texto           String   @db.Text
+  fecha           DateTime @default(now()) @db.Timestamptz
+
+  administrador Usuario      @relation("FeedbackAdministrador", fields: [administradorId], references: [id])
+  participante  Usuario      @relation("FeedbackParticipante", fields: [participanteId], references: [id])
+  capacitacion  Capacitacion @relation(fields: [capacitacionId], references: [id], onDelete: Cascade)
+
+  @@index([participanteId, fecha])
+  @@index([capacitacionId])
+  @@map("feedback")
+}
+
+/// CU-09: decisiones recomendadas que el Administrador marcó como aplicadas.
+/// Las recomendaciones se calculan; aquí solo se persiste su estado.
+model DecisionAplicada {
+  empresaId String   @map("empresa_id") @db.Uuid
+  clave     String   @db.VarChar(120)
+  aplicadaEn DateTime @default(now()) @map("aplicada_en") @db.Timestamptz
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@id([empresaId, clave])
+  @@map("decision_aplicada")
+}
