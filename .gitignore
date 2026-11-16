@@ -22,3 +22,6 @@ coverage/
 
 # Vercel (prototipo estático)
 .vercel
+
+# Credenciales de prueba (nunca al repositorio)
+CREDENCIALES*.txt

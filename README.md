@@ -74,6 +74,7 @@ Contraseña de todas: **`Regicap2026!`** (en el login hay botones que las rellen
 | Empresa | `redes@utp.ac.pa` | *Fundamentos de Redes*: 3 módulos con PDF, lecturas y videos + evaluación final |
 | Administrador | `diego.ramirez@regicap.edu` | Resultados, análisis y feedback de la Cámara de Comercio |
 | Administrador | `admin.redes@utp.ac.pa` | Resultados de UTP (demuestra el aislamiento entre empresas) |
+| Superadministrador | el de `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` (`.env`) | Portal de cuentas: crea, desactiva, cambia contraseña y elimina usuarios; lista empresas |
 
 ## Casos de uso → pantallas → endpoints
 
@@ -93,11 +94,19 @@ Contraseña de todas: **`Regicap2026!`** (en el login hay botones que las rellen
 | CU-12 Gestionar módulos | Empresa | `empresa/capacitaciones/[id]` | `…/modulos` · `…/actividades` (PDF/lectura/video) · `…/preguntas` · `POST /empresa/archivos/subida` |
 
 Además la Empresa gestiona sus Administradores en `empresa/administradores`.
+
+**Superadministrador** (cuarto rol, no está en el documento de la Fase 2): no pertenece a ninguna Empresa y **no ve**
+capacitaciones, respuestas ni resultados (RNF-03); solo administra cuentas en `superadmin/usuarios` y `superadmin/empresas`:
+crear usuarios de cualquier rol (incluida una Empresa nueva con su primera cuenta), cambiar contraseñas, desactivar/activar
+(la sesión abierta cae en segundos) y eliminar (un participante se elimina con sus inscripciones y respuestas; un
+administrador que ya dio feedback solo puede desactivarse). No puede desactivarse ni eliminarse a sí mismo y siempre debe
+quedar uno activo. El primero se crea al arrancar la API con `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD`; el arranque nunca
+pisa una contraseña ya cambiada. API: `/api/superadmin/usuarios` (GET/POST/PATCH/DELETE, `…/:id/password`) y `/api/superadmin/empresas`.
 Todos los errores usan `{ codigo, mensaje, campos }` (Fase 2 §7.1).
 
 ## Calidad: escenarios EC-01…EC-10
 
-`pnpm verify` ejecuta **119 comprobaciones** contra la API en marcha (usa `API_URL` para apuntar al proxy) y
+`pnpm verify` ejecuta **155 comprobaciones** (lee `.env`; la sección del superadmin se omite si no hay `SUPERADMIN_EMAIL`) contra la API en marcha (usa `API_URL` para apuntar al proxy) y
 `node scripts/verify-ec09.mjs` simula la caída de la IA. El script de verificación hace login varias veces:
 si lo repites en menos de un minuto el límite de intentos (EC, seguridad) responderá 429.
 
@@ -126,7 +135,8 @@ si lo repites en menos de un minuto el límite de intentos (EC, seguridad) respo
 - **MinIO**: la imagen oficial `minio/minio` ya no se publica en Docker Hub/Quay; el compose usa `bitnamilegacy/minio` (MinIO real).
 - **Traefik ≥ 3.6**: las versiones anteriores no funcionan con Docker 29.
 - **IA**: `IA_PROVIDER=mock` (determinista, por defecto) o `anthropic` (+ `ANTHROPIC_API_KEY`); `IA_MOCK_FALLAR=true` simula caídas.
-- Las sesiones no se revocan antes de su vencimiento (8 h) — compromiso reconocido en D-06.
+- Las sesiones duran 8 h (D-06), pero la API comprueba en cada petición (con caché de 15 s) que la cuenta exista y esté activa, así que desactivar o eliminar un usuario corta su acceso casi al instante.
+- **Superadministrador**: ver arriba. Se añadió como cuarto rol para poder administrar cuentas sin tocar la base de datos.
 
 ## Comandos útiles
 

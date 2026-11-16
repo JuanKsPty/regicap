@@ -36,6 +36,11 @@ x-env: &env
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
   CALIFICACION_BACKOFF_MS: ${CALIFICACION_BACKOFF_MS:-30000}
+  LOGIN_THROTTLE_LIMIT: ${LOGIN_THROTTLE_LIMIT:-10}
+  # Primer superadmin (se crea si no existe; luego su contraseña se cambia desde el portal)
+  SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-}
+  SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+  SUPERADMIN_NOMBRE: ${SUPERADMIN_NOMBRE:-Superadministrador}
 
 services:
   # Arranca aplicando las migraciones (y la demo si SEED_DEMO=true y la base está vacía)

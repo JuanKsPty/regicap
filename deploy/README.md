@@ -36,6 +36,9 @@ COOKIE_SECURE=true
 IA_PROVIDER=mock            # o anthropic + ANTHROPIC_API_KEY
 CALIFICACION_BACKOFF_MS=30000
 SEED_DEMO=true              # siembra la demo solo si la base está vacía
+SUPERADMIN_EMAIL=superadmin@regicap.juank.tech   # primer superadmin (se crea si no existe;
+SUPERADMIN_PASSWORD=<secreto>                    #  luego se cambia desde el portal y no se sobrescribe)
+SUPERADMIN_NOMBRE=Superadministrador
 ```
 
 `regicap-web`: `NODE_ENV=production`, `API_INTERNAL_URL=http://regicap-api:3001`, `JWT_SECRET` (el mismo de la API).
