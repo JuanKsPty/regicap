@@ -1,27 +1,100 @@
 import { describe, expect, it } from 'vitest';
 import {
   actividadSchema,
+  capacitacionPatchSchema,
   capacitacionSchema,
   cohorteDe,
+  formatearDuracion,
   nivelDesdePuntaje,
   preguntaSchema,
   rangoCohorte,
   registroSchema,
+  semanasDeDuracion,
   youtubeId,
 } from './index';
 
+const MSG_DURACION = 'La duración debe ser un número entero de semanas entre 1 y 52.';
+const MSG_OBLIGATORIOS = 'Debe completar los campos obligatorios.';
+const mensajesDe = (r: { success: boolean; error?: { issues: { path: PropertyKey[]; message: string }[] } }, campo: string) =>
+  (r.error?.issues ?? []).filter((i) => i.path[0] === campo).map((i) => i.message);
+
 describe('capacitacionSchema (EC-07: mensaje junto al campo)', () => {
   it('acepta nombre y duración válidos y recorta espacios', () => {
-    const r = capacitacionSchema.parse({ nombre: '  Ventas  ', duracion: ' 6 semanas ' });
-    expect(r).toEqual({ nombre: 'Ventas', duracion: '6 semanas' });
+    const r = capacitacionSchema.parse({ nombre: '  Ventas  ', duracion: ' 6 ' });
+    expect(r).toEqual({ nombre: 'Ventas', duracion: 6 });
   });
   it('rechaza campos vacíos con el literal de la Fase 1', () => {
     const r = capacitacionSchema.safeParse({ nombre: '   ', duracion: '' });
     expect(r.success).toBe(false);
-    if (!r.success) {
-      const msgs = r.error.issues.map((i) => i.message);
-      expect(msgs).toContain('Debe completar los campos obligatorios.');
-    }
+    expect(mensajesDe(r, 'nombre')).toEqual([MSG_OBLIGATORIOS]);
+    expect(mensajesDe(r, 'duracion')).toEqual([MSG_OBLIGATORIOS]);
+  });
+  it('duración ausente o null → campo obligatorio', () => {
+    expect(mensajesDe(capacitacionSchema.safeParse({ nombre: 'Ventas' }), 'duracion')).toEqual([MSG_OBLIGATORIOS]);
+    expect(mensajesDe(capacitacionSchema.safeParse({ nombre: 'Ventas', duracion: null }), 'duracion')).toEqual([MSG_OBLIGATORIOS]);
+  });
+});
+
+describe('capacitacionSchema.duracion (D-2: semanas, entero de 1 a 52)', () => {
+  it.each([
+    [1, 1],
+    [52, 52],
+    ['1', 1],
+    ['52', 52],
+    [' 12 ', 12],
+  ])('acepta %j → %i', (entrada, esperado) => {
+    expect(capacitacionSchema.parse({ nombre: 'Ventas', duracion: entrada }).duracion).toBe(esperado);
+  });
+  it.each([[0], [53], [-3], [2.5], ['0'], ['53'], ['2.5'], ['seis'], ['6 semanas'], ['Por definir'], [Number.NaN], [true]])(
+    'rechaza %j con el mensaje de rango junto al campo',
+    (entrada) => {
+      const r = capacitacionSchema.safeParse({ nombre: 'Ventas', duracion: entrada });
+      expect(r.success).toBe(false);
+      expect(mensajesDe(r, 'duracion')).toEqual([MSG_DURACION]);
+      expect(mensajesDe(r, 'nombre')).toEqual([]);
+    },
+  );
+});
+
+describe('capacitacionPatchSchema (D-2 también al editar)', () => {
+  it('permite cambiar solo el nombre o solo la duración', () => {
+    expect(capacitacionPatchSchema.parse({ nombre: ' Ventas ' })).toEqual({ nombre: 'Ventas' });
+    expect(capacitacionPatchSchema.parse({ duracion: '8' })).toEqual({ duracion: 8 });
+  });
+  it.each([[0], [53], ['8 semanas'], [1.5]])('rechaza duración %j', (entrada) => {
+    const r = capacitacionPatchSchema.safeParse({ duracion: entrada });
+    expect(r.success).toBe(false);
+    expect(mensajesDe(r, 'duracion')).toEqual([MSG_DURACION]);
+  });
+  it('duración vacía → campo obligatorio', () => {
+    expect(mensajesDe(capacitacionPatchSchema.safeParse({ nombre: 'Ventas', duracion: '' }), 'duracion')).toEqual([MSG_OBLIGATORIOS]);
+  });
+  it('cuerpo vacío → campos obligatorios', () => {
+    const r = capacitacionPatchSchema.safeParse({});
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.map((i) => i.message)).toEqual([MSG_OBLIGATORIOS]);
+  });
+});
+
+describe('duración guardada como texto «N semanas» (sin migración)', () => {
+  it('formatearDuracion', () => {
+    expect(formatearDuracion(1)).toBe('1 semana');
+    expect(formatearDuracion(6)).toBe('6 semanas');
+    expect(formatearDuracion(52)).toBe('52 semanas');
+  });
+  it.each([
+    ['6 semanas', 6],
+    ['1 semana', 1],
+    ['10 Semanas', 10],
+    ['2', 2],
+    ['Por definir', null],
+    ['0 semanas', null],
+    ['53 semanas', null],
+    ['6 meses', null],
+    ['', null],
+  ])('semanasDeDuracion(%j) → %j', (texto, n) => expect(semanasDeDuracion(texto)).toBe(n));
+  it('ida y vuelta', () => {
+    for (let n = 1; n <= 52; n++) expect(semanasDeDuracion(formatearDuracion(n))).toBe(n);
   });
 });
 

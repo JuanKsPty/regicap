@@ -1,6 +1,6 @@
 'use client';
 
-import { capacitacionSchema, type CapacitacionInput } from '@regicap/types';
+import { capacitacionSchema, semanasDeDuracion, type CapacitacionFormValues, type CapacitacionInput } from '@regicap/types';
 import { Alert, Button, Dialog, DialogContent, DialogDescription, DialogTitle, EmptyState, Field, Input, Skeleton } from '@regicap/ui';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Layers, Pencil, Plus, Target } from 'lucide-react';
@@ -13,11 +13,11 @@ import { aplicarErroresApi, mensajeDe } from '@/lib/forms';
 import { useCambiarEstadoCapacitacion, useCapacitacionDetalle, useEditarCapacitacion, useModulosMutations } from '@/lib/queries';
 import { ModuloCard } from './modulo-card';
 
-function EditarDatosDialog({ id, inicial, abierto, onClose }: { id: string; inicial: CapacitacionInput; abierto: boolean; onClose: () => void }) {
+function EditarDatosDialog({ id, inicial, abierto, onClose }: { id: string; inicial: CapacitacionFormValues; abierto: boolean; onClose: () => void }) {
   const editar = useEditarCapacitacion(id);
   const { toast } = useToast();
   const [error, setErrorGeneral] = useState<string | null>(null);
-  const { register, handleSubmit, setError, formState: { errors } } = useForm<CapacitacionInput>({ resolver: zodResolver(capacitacionSchema), defaultValues: inicial });
+  const { register, handleSubmit, setError, formState: { errors } } = useForm<CapacitacionFormValues, unknown, CapacitacionInput>({ resolver: zodResolver(capacitacionSchema), defaultValues: inicial });
   const enviar = handleSubmit(async (v) => {
     setErrorGeneral(null);
     try {
@@ -32,13 +32,13 @@ function EditarDatosDialog({ id, inicial, abierto, onClose }: { id: string; inic
     <Dialog open={abierto} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>Editar capacitación</DialogTitle>
-        <DialogDescription>Cambia el nombre o la duración estimada.</DialogDescription>
+        <DialogDescription>Cambia el nombre o la duración estimada (en semanas, de 1 a 52).</DialogDescription>
         <form onSubmit={enviar} noValidate className="mt-4 space-y-3.5">
           <Field label="Nombre" htmlFor="ed-nombre" error={errors.nombre?.message}>
             <Input id="ed-nombre" aria-invalid={!!errors.nombre} {...register('nombre')} />
           </Field>
-          <Field label="Duración estimada" htmlFor="ed-duracion" error={errors.duracion?.message}>
-            <Input id="ed-duracion" aria-invalid={!!errors.duracion} {...register('duracion')} />
+          <Field label="Duración estimada (semanas)" htmlFor="ed-duracion" error={errors.duracion?.message}>
+            <Input id="ed-duracion" type="number" inputMode="numeric" min={1} max={52} step={1} placeholder="Ej. 6" aria-invalid={!!errors.duracion} {...register('duracion')} />
           </Field>
           {error && <Alert tone="error">{error}</Alert>}
           <div className="flex justify-end gap-2">
@@ -141,7 +141,7 @@ export function GestionarModulosPage({ id }: { id: string }) {
               <EmptyState icon={<Layers className="size-7" />} title="Esta capacitación aún no tiene módulos" description="Crea el primero con el campo de arriba." />
             )}
 
-            {editarDatos && <EditarDatosDialog id={id} inicial={{ nombre: c.nombre, duracion: c.duracion }} abierto onClose={() => setEditarDatos(false)} />}
+            {editarDatos && <EditarDatosDialog id={id} inicial={{ nombre: c.nombre, duracion: semanasDeDuracion(c.duracion) ?? '' }} abierto onClose={() => setEditarDatos(false)} />}
           </>
         );
       }}
