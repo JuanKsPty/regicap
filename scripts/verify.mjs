@@ -167,6 +167,13 @@ async function main() {
   r = await empA.patch(`/empresa/capacitaciones/${capUnaSemana}`, { duracion: 52 });
   check('D-2 duración 52 → «52 semanas»', r.status === 200 && r.data.duracion === '52 semanas', JSON.stringify(r.data));
 
+  // D-1: una capacitación sin módulos no puede publicarse
+  r = await empA.post(`/empresa/capacitaciones/${capUnaSemana}/publicar`);
+  check('D-1 publicar con 0 módulos → 409 PUBLICACION_INVALIDA', r.status === 409 && r.data.codigo === 'PUBLICACION_INVALIDA' && r.data.mensaje === 'Agrega al menos un módulo antes de publicar.', JSON.stringify(r.data));
+  r = await empA.get('/empresa/capacitaciones');
+  check('D-1 la capacitación sin módulos sigue en BORRADOR', r.data.find((c) => c.id === capUnaSemana)?.estado === 'BORRADOR');
+  r = await part.get('/catalogo?page=1');
+  check('D-1 y no aparece en el catálogo', r.status === 200 && !r.data.items.some((i) => i.capacitacionId === capUnaSemana));
   r = await empA.del(`/empresa/capacitaciones/${capUnaSemana}`);
   check('se elimina la capacitación de prueba', r.status === 204, `status ${r.status}`);
 

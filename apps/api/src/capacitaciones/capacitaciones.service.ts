@@ -59,16 +59,9 @@ export class CapacitacionesService {
   /** CU-11 FA-2. */
   async publicar(empresaId: string, id: string): Promise<CapacitacionDto> {
     const c = await this.obtenerScoped(id, empresaId);
-    // RF-06: el test de cada módulo debe sumar 100 % antes de entrar al catálogo.
-    const invalidos = (await this.repo.pesosPorModulo(id)).filter((m) => Math.abs(m.peso - 100) > 0.01);
-    if (invalidos.length) {
-      const lista = invalidos.map((m) => `«${m.nombre}» (${m.peso} %)`).join(', ');
-      throw new AppException(
-        HttpStatus.CONFLICT,
-        'PUBLICACION_INVALIDA',
-        `Antes de publicar, los pesos del test deben sumar 100 %: ${lista}.`,
-      );
-    }
+    // Sin módulos no hay nada que ofrecer en el catálogo; y RF-06: el test de cada módulo debe sumar 100 %.
+    const motivo = Capacitacion.motivoNoPublicable(c._count.modulos, c._count.modulos ? await this.repo.pesosPorModulo(id) : []);
+    if (motivo) throw new AppException(HttpStatus.CONFLICT, 'PUBLICACION_INVALIDA', motivo);
     const entidad = new Capacitacion(c.estado);
     return aCapacitacionDto(await this.repo.update(id, { estado: entidad.publicar() }));
   }
