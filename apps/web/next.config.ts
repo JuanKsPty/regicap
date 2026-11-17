@@ -21,6 +21,15 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // Documentos HTML y payloads RSC: siempre revalidar. Las páginas prerenderizadas
+        // (p. ej. /login) salían con `s-maxage=31536000`; cualquier caché intermedia podía
+        // servir tras un despliegue el HTML del build anterior, que apunta a chunks con hash
+        // que ya no existen (404 → «Application error»). Quedan fuera /api y
+        // /_next/static, cuyos archivos llevan hash en el nombre y siguen siendo `immutable`.
+        source: '/((?!api/|_next/static/|_next/image).*)',
+        headers: [{ key: 'Cache-Control', value: 'private, no-cache, max-age=0, must-revalidate' }],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
