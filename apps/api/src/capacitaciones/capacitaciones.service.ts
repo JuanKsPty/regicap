@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@regicap/db';
-import type { CapacitacionDto, CapacitacionInput, CapacitacionPatchInput } from '@regicap/types';
+import { formatearDuracion, type CapacitacionDto, type CapacitacionInput, type CapacitacionPatchInput } from '@regicap/types';
 import { AppException, noEncontrado, reglaViolada } from '../common/errors';
 import { STORAGE_PROVIDER, type StorageProvider } from '../storage/storage-provider.interface';
 import { Capacitacion } from './capacitacion.entity';
@@ -39,7 +39,7 @@ export class CapacitacionesService {
   async registrar(empresaId: string, dto: CapacitacionInput): Promise<CapacitacionDto> {
     await this.exigirNombreLibre(empresaId, dto.nombre);
     try {
-      const c = await this.repo.create({ empresaId, nombre: dto.nombre, duracion: dto.duracion, estado: Capacitacion.estadoInicial });
+      const c = await this.repo.create({ empresaId, nombre: dto.nombre, duracion: formatearDuracion(dto.duracion), estado: Capacitacion.estadoInicial });
       return aCapacitacionDto(c);
     } catch (e) {
       this.traducirDuplicado(e);
@@ -50,7 +50,7 @@ export class CapacitacionesService {
     await this.obtenerScoped(id, empresaId);
     if (dto.nombre) await this.exigirNombreLibre(empresaId, dto.nombre, id);
     try {
-      return aCapacitacionDto(await this.repo.update(id, { nombre: dto.nombre, duracion: dto.duracion }));
+      return aCapacitacionDto(await this.repo.update(id, { nombre: dto.nombre, duracion: dto.duracion === undefined ? undefined : formatearDuracion(dto.duracion) }));
     } catch (e) {
       this.traducirDuplicado(e);
     }
@@ -59,16 +59,9 @@ export class CapacitacionesService {
   /** CU-11 FA-2. */
   async publicar(empresaId: string, id: string): Promise<CapacitacionDto> {
     const c = await this.obtenerScoped(id, empresaId);
-    // RF-06: el test de cada módulo debe sumar 100 % antes de entrar al catálogo.
-    const invalidos = (await this.repo.pesosPorModulo(id)).filter((m) => Math.abs(m.peso - 100) > 0.01);
-    if (invalidos.length) {
-      const lista = invalidos.map((m) => `«${m.nombre}» (${m.peso} %)`).join(', ');
-      throw new AppException(
-        HttpStatus.CONFLICT,
-        'PUBLICACION_INVALIDA',
-        `Antes de publicar, los pesos del test deben sumar 100 %: ${lista}.`,
-      );
-    }
+    // Sin módulos no hay nada que ofrecer en el catálogo; y RF-06: el test de cada módulo debe sumar 100 %.
+    const motivo = Capacitacion.motivoNoPublicable(c._count.modulos, c._count.modulos ? await this.repo.pesosPorModulo(id) : []);
+    if (motivo) throw new AppException(HttpStatus.CONFLICT, 'PUBLICACION_INVALIDA', motivo);
     const entidad = new Capacitacion(c.estado);
     return aCapacitacionDto(await this.repo.update(id, { estado: entidad.publicar() }));
   }

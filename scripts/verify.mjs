@@ -142,16 +142,40 @@ async function main() {
   seccion('CU-11 Gestionar capacitaciones (Empresa)');
   r = await empA.post('/empresa/capacitaciones', { nombre: '  ', duracion: '' });
   check('FE-1 campos vacíos → 400 CAMPOS_REQUERIDOS con mensaje por campo', r.status === 400 && r.data.codigo === 'CAMPOS_REQUERIDOS' && r.data.campos.nombre && r.data.campos.duracion, JSON.stringify(r.data));
-  r = await empA.post('/empresa/capacitaciones', { nombre: 'Gestión de Proyectos', duracion: '6 semanas', estado: 'PUBLICADA' });
-  check('FA-1 crea en BORRADOR (ignora el estado recibido)', r.status === 201 && r.data.estado === 'BORRADOR' && r.data.modulos === 0, JSON.stringify(r.data));
+  r = await empA.post('/empresa/capacitaciones', { nombre: 'Gestión de Proyectos', duracion: 6, estado: 'PUBLICADA' });
+  check('FA-1 crea en BORRADOR (ignora el estado recibido) y guarda «6 semanas»', r.status === 201 && r.data.estado === 'BORRADOR' && r.data.modulos === 0 && r.data.duracion === '6 semanas', JSON.stringify(r.data));
   const capId = r.data.id;
-  r = await empA.post('/empresa/capacitaciones', { nombre: 'gestión de proyectos', duracion: '1' });
+  r = await empA.post('/empresa/capacitaciones', { nombre: 'gestión de proyectos', duracion: 1 });
   check('FE-2 nombre duplicado → 409 NOMBRE_DUPLICADO', r.status === 409 && r.data.codigo === 'NOMBRE_DUPLICADO' && r.data.campos.nombre);
-  r = await empB.post('/empresa/capacitaciones', { nombre: 'Gestión de Proyectos', duracion: '2 semanas' });
+  r = await empB.post('/empresa/capacitaciones', { nombre: 'Gestión de Proyectos', duracion: 2 });
   check('el mismo nombre en OTRA Empresa sí se permite (UNIQUE empresa+nombre)', r.status === 201);
   const capBId = r.data.id;
-  r = await empA.patch(`/empresa/capacitaciones/${capId}`, { duracion: '8 semanas' });
-  check('edita la duración', r.status === 200 && r.data.duracion === '8 semanas');
+  r = await empA.patch(`/empresa/capacitaciones/${capId}`, { duracion: '8' });
+  check('edita la duración (8 → «8 semanas»)', r.status === 200 && r.data.duracion === '8 semanas', JSON.stringify(r.data));
+
+  // D-2: la duración es un entero de 1 a 52 semanas (Requerimiento especial de CU-11)
+  const MSG_DURACION = 'La duración debe ser un número entero de semanas entre 1 y 52.';
+  for (const mala of [0, 53, 2.5, '6 semanas', 'Por definir']) {
+    r = await empA.post('/empresa/capacitaciones', { nombre: `Duración inválida ${mala}`, duracion: mala });
+    check(`D-2 registrar con duración ${JSON.stringify(mala)} → 400 con mensaje junto al campo`, r.status === 400 && r.data.codigo === 'DATOS_INVALIDOS' && r.data.campos.duracion === MSG_DURACION && !r.data.campos.nombre, JSON.stringify(r.data));
+  }
+  r = await empA.patch(`/empresa/capacitaciones/${capId}`, { duracion: 53 });
+  check('D-2 editar con duración 53 → 400 y no cambia el valor', r.status === 400 && r.data.campos.duracion === MSG_DURACION, JSON.stringify(r.data));
+  r = await empA.post('/empresa/capacitaciones', { nombre: 'Curso de una semana', duracion: '1' });
+  check('D-2 duración 1 → «1 semana»', r.status === 201 && r.data.duracion === '1 semana', JSON.stringify(r.data));
+  const capUnaSemana = r.data.id;
+  r = await empA.patch(`/empresa/capacitaciones/${capUnaSemana}`, { duracion: 52 });
+  check('D-2 duración 52 → «52 semanas»', r.status === 200 && r.data.duracion === '52 semanas', JSON.stringify(r.data));
+
+  // D-1: una capacitación sin módulos no puede publicarse
+  r = await empA.post(`/empresa/capacitaciones/${capUnaSemana}/publicar`);
+  check('D-1 publicar con 0 módulos → 409 PUBLICACION_INVALIDA', r.status === 409 && r.data.codigo === 'PUBLICACION_INVALIDA' && r.data.mensaje === 'Agrega al menos un módulo antes de publicar.', JSON.stringify(r.data));
+  r = await empA.get('/empresa/capacitaciones');
+  check('D-1 la capacitación sin módulos sigue en BORRADOR', r.data.find((c) => c.id === capUnaSemana)?.estado === 'BORRADOR');
+  r = await part.get('/catalogo?page=1');
+  check('D-1 y no aparece en el catálogo', r.status === 200 && !r.data.items.some((i) => i.capacitacionId === capUnaSemana));
+  r = await empA.del(`/empresa/capacitaciones/${capUnaSemana}`);
+  check('se elimina la capacitación de prueba', r.status === 204, `status ${r.status}`);
 
   /* ───────────── EC-02 Aislamiento entre Empresas ───────────── */
   seccion('EC-02 · Aislamiento entre Empresas (404 sin revelar existencia)');
@@ -324,7 +348,7 @@ async function main() {
   r = await empA.del(`/empresa/capacitaciones/${capId}`);
   check('FE-3 eliminar con inscripciones activas → 409 TIENE_INSCRITOS', r.status === 409 && r.data.codigo === 'TIENE_INSCRITOS', `status ${r.status}`);
   // Capacitación sin inscritos con módulos, actividades y preguntas → se borra en cascada
-  const c2 = (await empA.post('/empresa/capacitaciones', { nombre: 'Para borrar', duracion: '1 semana' })).data.id;
+  const c2 = (await empA.post('/empresa/capacitaciones', { nombre: 'Para borrar', duracion: 1 })).data.id;
   const m = (await empA.post(`/empresa/capacitaciones/${c2}/modulos`, { nombre: 'M' })).data.id;
   await empA.post(`/empresa/modulos/${m}/actividades`, { tipo: 'TEXTO', titulo: 'T', contenido: '<p>x</p>' });
   await empA.post(`/empresa/modulos/${m}/preguntas`, { tipo: 'CUANTITATIVA', texto: '¿?', peso: 100, valorEsperado: 5, tolerancia: 10 });

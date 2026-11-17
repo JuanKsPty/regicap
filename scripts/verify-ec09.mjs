@@ -66,7 +66,7 @@ const empresa = cliente();
 const part = cliente();
 const sfx = Math.random().toString(36).slice(2, 7);
 await empresa.post('/auth/registro', { rol: 'EMPRESA', nombre: 'Emp', email: `ec9e-${sfx}@prueba.co`, password: PASS, empresaNombre: `EC09 ${sfx}` });
-const cap = (await empresa.post('/empresa/capacitaciones', { nombre: 'Curso EC09', duracion: '1 semana' })).data;
+const cap = (await empresa.post('/empresa/capacitaciones', { nombre: 'Curso EC09', duracion: 1 })).data;
 const mod = (await empresa.post(`/empresa/capacitaciones/${cap.id}/modulos`, { nombre: 'Único' })).data;
 await empresa.post(`/empresa/capacitaciones/${cap.id}/publicar`);
 await part.post('/auth/registro', { rol: 'PARTICIPANTE', nombre: 'Part', email: `p9-${sfx}@prueba.co`, password: PASS });
