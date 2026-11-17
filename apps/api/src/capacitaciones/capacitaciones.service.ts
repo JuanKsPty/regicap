@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@regicap/db';
-import type { CapacitacionDto, CapacitacionInput, CapacitacionPatchInput } from '@regicap/types';
+import { formatearDuracion, type CapacitacionDto, type CapacitacionInput, type CapacitacionPatchInput } from '@regicap/types';
 import { AppException, noEncontrado, reglaViolada } from '../common/errors';
 import { STORAGE_PROVIDER, type StorageProvider } from '../storage/storage-provider.interface';
 import { Capacitacion } from './capacitacion.entity';
@@ -39,7 +39,7 @@ export class CapacitacionesService {
   async registrar(empresaId: string, dto: CapacitacionInput): Promise<CapacitacionDto> {
     await this.exigirNombreLibre(empresaId, dto.nombre);
     try {
-      const c = await this.repo.create({ empresaId, nombre: dto.nombre, duracion: dto.duracion, estado: Capacitacion.estadoInicial });
+      const c = await this.repo.create({ empresaId, nombre: dto.nombre, duracion: formatearDuracion(dto.duracion), estado: Capacitacion.estadoInicial });
       return aCapacitacionDto(c);
     } catch (e) {
       this.traducirDuplicado(e);
@@ -50,7 +50,7 @@ export class CapacitacionesService {
     await this.obtenerScoped(id, empresaId);
     if (dto.nombre) await this.exigirNombreLibre(empresaId, dto.nombre, id);
     try {
-      return aCapacitacionDto(await this.repo.update(id, { nombre: dto.nombre, duracion: dto.duracion }));
+      return aCapacitacionDto(await this.repo.update(id, { nombre: dto.nombre, duracion: dto.duracion === undefined ? undefined : formatearDuracion(dto.duracion) }));
     } catch (e) {
       this.traducirDuplicado(e);
     }
