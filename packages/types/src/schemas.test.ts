@@ -5,6 +5,10 @@ import {
   capacitacionSchema,
   cohorteDe,
   formatearDuracion,
+  MSG_CU03_CATALOGO_VACIO,
+  MSG_CU03_HISTORIAL_VACIO,
+  MSG_CU03_SIN_ACTIVAS,
+  MSG_CU04_SIN_ACTIVAS,
   nivelDesdePuntaje,
   preguntaSchema,
   rangoCohorte,
@@ -148,5 +152,14 @@ describe('registroSchema', () => {
   });
   it('el Participante no exige organización', () => {
     expect(registroSchema.safeParse({ rol: 'PARTICIPANTE', nombre: 'Ana', email: 'A@B.co', password: '12345678' }).success).toBe(true);
+  });
+});
+
+describe('Mensajes de los estados vacíos (literales de la Fase 1, defecto D-3)', () => {
+  it('CU-03 FE-1, FE-2 y FE-3 y CU-04 FE-1 usan el texto exacto de la especificación', () => {
+    expect(MSG_CU03_SIN_ACTIVAS).toBe('No tienes capacitaciones activas. Explora el catálogo abajo.');
+    expect(MSG_CU03_CATALOGO_VACIO).toBe('No hay capacitaciones disponibles en este momento.');
+    expect(MSG_CU03_HISTORIAL_VACIO).toBe('Aún no tienes capacitaciones en tu historial.');
+    expect(MSG_CU04_SIN_ACTIVAS).toBe('No tienes capacitaciones activas. Inscríbete desde Administrar Capacitaciones.');
   });
 });

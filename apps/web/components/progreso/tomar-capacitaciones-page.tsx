@@ -1,5 +1,6 @@
 'use client';
 
+import { MSG_CU04_SIN_ACTIVAS } from '@regicap/types';
 import { Alert, Button, EmptyState, Skeleton } from '@regicap/ui';
 import { PlayCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -23,8 +24,7 @@ export function TomarCapacitacionesPage() {
           ) : (
             <EmptyState
               icon={<PlayCircle className="size-7" />}
-              title="No tienes capacitaciones activas"
-              description="Inscríbete desde Administrar capacitaciones para empezar a resolver módulos."
+              title={MSG_CU04_SIN_ACTIVAS}
               action={<Button asChild><Link href="/participante/capacitaciones">Ir al catálogo</Link></Button>}
             />
           )

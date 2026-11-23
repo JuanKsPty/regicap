@@ -1,6 +1,6 @@
 'use client';
 
-import type { VistaInscripciones } from '@regicap/types';
+import { MSG_CU03_HISTORIAL_VACIO, MSG_CU03_SIN_ACTIVAS, type VistaInscripciones } from '@regicap/types';
 import { EmptyState, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@regicap/ui';
 import { BookOpen } from 'lucide-react';
 import { useState } from 'react';
@@ -22,8 +22,7 @@ function Lista({ vista }: { vista: VistaInscripciones }) {
         ) : (
           <EmptyState
             icon={<BookOpen className="size-7" />}
-            title={vista === 'activas' ? 'No tienes capacitaciones activas' : 'Aún no tienes capacitaciones en tu historial'}
-            description={vista === 'activas' ? 'Explora el catálogo de abajo e inscríbete con un clic.' : 'Aquí aparecerán las completadas y las canceladas.'}
+            title={vista === 'activas' ? MSG_CU03_SIN_ACTIVAS : MSG_CU03_HISTORIAL_VACIO}
           />
         )
       }

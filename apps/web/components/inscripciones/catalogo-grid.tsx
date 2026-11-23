@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogoItemDto } from '@regicap/types';
+import { MSG_CU03_CATALOGO_VACIO, type CatalogoItemDto } from '@regicap/types';
 import { Badge, Button, Card, EmptyState, SectionLabel, Skeleton } from '@regicap/ui';
 import { ChevronLeft, ChevronRight, Library } from 'lucide-react';
 import { useState } from 'react';
@@ -63,7 +63,7 @@ export function CatalogoGrid() {
             )}
           </>
         ) : (
-          <EmptyState icon={<Library className="size-7" />} title="No hay capacitaciones disponibles por ahora" description="Ya estás inscrito en todas las publicadas o aún no se publica ninguna." />
+          <EmptyState icon={<Library className="size-7" />} title={MSG_CU03_CATALOGO_VACIO} />
         );
       }}
     </Consulta>
