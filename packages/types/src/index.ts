@@ -1,5 +1,6 @@
 export * from './enums';
 export * from './errores';
+export * from './mensajes';
 export * from './auth';
 export * from './capacitacion';
 export * from './modulo';
