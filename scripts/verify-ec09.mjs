@@ -52,10 +52,16 @@ async function esperar(fn, ms = 20000) {
 }
 
 console.log('EC-09 · el servicio de IA falla');
-// Reinicia API y worker con la espera de reintento corta
-spawn('pkill', ['-f', 'dist/worker.js']);
-spawn('pkill', ['-f', 'dist/main.js']);
+// Reinicia API y worker con la espera de reintento corta. Los patrones no llevan
+// «.js» porque `nest start` (pnpm dev) lanza `node dist/main` y `node dist/worker`:
+// si alguno sigue vivo, la API vieja encola con la espera de .env (30 s) y un worker
+// sano califica el módulo, de modo que la prueba no mide la caída de la IA (D-4).
+for (const patron of ['dist/worker', 'dist/main']) await cuando(spawn('pkill', ['-f', patron]));
 await dormir(1500);
+if ((await fetch(`${API}/health`).catch(() => null))?.ok) {
+  console.error('\x1b[31m✘ Sigue respondiendo una API en el puerto 3001 (¿pnpm dev?). Detenla y vuelve a ejecutar.\x1b[0m');
+  process.exit(2);
+}
 const api = spawn('node', [MAIN], { env: { ...process.env, CALIFICACION_BACKOFF_MS: '300' }, stdio: 'ignore' });
 for (let i = 0; i < 30; i++) {
   if ((await fetch(`${API}/health`).catch(() => null))?.ok) break;
@@ -74,7 +80,9 @@ const insc = (await part.post('/participante/inscripciones', { capacitacionId: c
 const ruta = `/participante/inscripciones/${insc.id}/modulos/${mod.id}`;
 
 // 1) Worker con IA caída
-let w = worker({ IA_MOCK_FALLAR: 'true', CALIFICACION_BACKOFF_MS: '300' });
+// IA_MOCK_FALLAR solo afecta al proveedor simulado: se fuerza IA_PROVIDER=mock para que
+// la prueba no dependa del .env local (con IA_PROVIDER=anthropic el worker calificaba bien, D-4).
+let w = worker({ IA_PROVIDER: 'mock', IA_MOCK_FALLAR: 'true', CALIFICACION_BACKOFF_MS: '300' });
 await dormir(3500);
 const t0 = Date.now();
 const env = await part.post(`${ruta}/enviar`, { reflexion: { aprendido: 'Aprendí bastante sobre el tema del curso en esta semana.', aplicacion: 'Lo aplicaré en mi negocio con un plan de trabajo.' } });
@@ -98,7 +106,7 @@ const admin = cliente();
 await admin.post('/auth/login', { email: adminNombre, password: PASS });
 const antes = (await admin.get('/admin/resultados')).data;
 check('el Administrador ve el aviso de calificaciones con error', antes.calificacionesConError === 1);
-w = worker({ IA_MOCK_FALLAR: 'false', CALIFICACION_BACKOFF_MS: '300' });
+w = worker({ IA_PROVIDER: 'mock', IA_MOCK_FALLAR: 'false', CALIFICACION_BACKOFF_MS: '300' });
 await dormir(3000);
 const re = await admin.post('/admin/calificaciones/reencolar');
 check('reencola la calificación fallida', re.status === 200 && re.data.reencoladas === 1, JSON.stringify(re.data));

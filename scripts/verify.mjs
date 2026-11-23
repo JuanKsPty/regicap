@@ -515,6 +515,7 @@ async function main() {
   seccion('EC-03 Contraseñas con hash · límite de intentos');
   const planas = psql(`SELECT count(*) FROM usuario WHERE password_hash !~ '^\\$2[aby]\\$12\\$'`);
   if (planas !== null) check('EC-03 100 % de contraseñas con hash bcrypt (costo 12)', planas === '0', `sin hash: ${planas}`);
+  else console.log(gris('  · EC-03 omitido: no hay acceso a PostgreSQL por Docker'));
   const t = nuevoCliente('fuerza bruta');
   const intentos = [];
   const limiteLogin = Number(process.env.LOGIN_THROTTLE_LIMIT ?? 10);
@@ -530,7 +531,9 @@ async function main() {
 /** Consulta directa a PostgreSQL (solo si hay Docker); devuelve null si no es posible. */
 function psql(sql) {
   try {
-    return execSync(`docker compose exec -T postgres psql -U regicap -d regicap -tA -c ${JSON.stringify(sql)}`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    // El SQL va por la entrada estándar: dentro de comillas dobles la shell expandía
+    // los `$` de las expresiones regulares y la consulta de EC-03 fallaba sin avisar (D-4).
+    return execSync('docker compose exec -T postgres psql -U regicap -d regicap -tA', { input: sql, stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim();
   } catch {
     return null;
   }
